@@ -1,0 +1,104 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    working-directory: nexa-android
+
+jobs:
+  quality:
+    name: detekt (incl. ktlint rules) · spotless
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Spotless
+        run: ./gradlew spotlessCheck
+      - name: Detekt + formatting
+        run: ./gradlew detekt
+
+  unit-tests:
+    name: Unit tests · Konsist architecture law
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Run unit + architecture tests
+        run: ./gradlew test testDebugUnitTest :app:testGmsDebugUnitTest
+      - name: Publish test reports
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: unit-test-reports
+          path: 'nexa-android/**/build/reports/tests/**'
+
+  lint:
+    name: Android Lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Lint (debug)
+        run: ./gradlew lintDebug :app:lintGmsDebug
+      - name: Publish lint reports
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lint-reports
+          path: 'nexa-android/**/build/reports/lint-results-*.html'
+
+  build-debug:
+    name: Assemble debug (gms + nogms)
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Assemble debug (both flavors) + benchmark compile check
+        run: ./gradlew :app:assembleDebug :benchmark:assembleDebug
+      - name: Upload debug APKs
+        uses: actions/upload-artifact@v4
+        with:
+          name: nexa-debug-apks
+          path: 'nexa-android/app/build/outputs/apk/**/*.apk'
+
+  build-release:
+    name: Assemble release (gms + nogms)
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Assemble release (R8, debug-signed — see ED-7)
+        run: ./gradlew :app:assembleRelease
