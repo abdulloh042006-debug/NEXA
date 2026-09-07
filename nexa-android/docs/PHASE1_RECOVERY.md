@@ -10,9 +10,11 @@ convention plugins; app manifest with backup disabled and no launcher activity;
 root CI workflow location; executable wrapper and distribution checksum.
 No Router work was recreated. Dependency/toolchain versions remain unchanged.
 
-Static module inventory: 86 unique modules, all build files present.
-Build validation is pending in this recovery checkpoint. The Work environment
-previously failed reading a temporary Gradle binary cache; local validation uses
---no-configuration-cache, without changing the repository default.
+Static module inventory passed: 86 unique modules, all build files present. The
+combined Task 2 validation configured the full project and passed the existing 13
+AI tests, 2 Konsist architecture tests, `:core:proto:build`, `:core:data` compile
+and tests, and the app GMS debug APK. The restored module wiring is exercised by
+those tasks. See LOCAL_SETTINGS.md for the final quality results and Work-environment
+cache incidents.
 
 Push is intentionally deferred. Final validation is recorded in the Task 2 report.

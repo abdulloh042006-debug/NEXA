@@ -53,10 +53,19 @@ round trips, absent vs explicit optional values, serializer default/read/write,
 malformed data, invalid/future versions, device IO errors, real DataStore persistence
 across lifecycle restart and preservation of the last committed file on failure.
 
-Validation is pending in the initial checkpoint; final results are recorded below
-when Gradle completes. Runtime validation uses a full JDK 17 and SDK 35 outside Git.
-The known Work temporary binary-cache failure is avoided with the invocation-only
---no-configuration-cache flag; the repository default remains unchanged.
+Targeted Gradle validation passed Wire generation and `:core:proto:build`, all 5
+proto tests, all 13 serializer/DataStore tests, the existing 13 AI tests and 2
+Konsist architecture tests, and the app GMS debug APK. A final combined run reached
+the benchmark APK and quality phase before Detekt reported only import ordering in
+three Task 2 files. After correcting those imports, the same pinned Detekt 1.23.7
+CLI and formatting plugin passed `core:data/src`; Spotless's configured misc
+invariants and `git diff --check` also passed. The initial checkpoint bundle retains
+the full Gradle results; the final bundle contains the corrected commits.
+
+Runtime validation used a full JDK 17 and SDK 35 outside Git. The Work environment
+twice produced corrupt temporary Gradle cache artifacts (binary-store EOF and an
+instrumented JAR with a missing ZIP end header). Both were quarantined and rebuilt;
+repository configuration was not changed to hide an environment failure.
 
 References: [Wire generation](https://square.github.io/wire/wire_compiler/),
 [DataStore lifecycle](https://developer.android.com/topic/libraries/architecture/datastore).
