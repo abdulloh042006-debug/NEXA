@@ -1,0 +1,6 @@
+<resources>
+    <string name="feature_chat_title">NEXA</string>
+    <string name="feature_chat_message_hint">Type a message</string>
+    <string name="feature_chat_send">Send</string>
+    <string name="feature_chat_model_unavailable">Your message was saved on this device. The AI model is unavailable.</string>
+</resources>
