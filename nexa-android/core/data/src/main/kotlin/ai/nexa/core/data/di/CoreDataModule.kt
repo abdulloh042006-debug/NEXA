@@ -1,7 +1,9 @@
 package ai.nexa.core.data.di
 
 import ai.nexa.core.data.conversation.ConversationDao
+import ai.nexa.core.data.conversation.ConversationStore
 import ai.nexa.core.data.conversation.MessageDao
+import ai.nexa.core.data.conversation.RoomConversationStore
 import ai.nexa.core.data.crypto.DatabasePassphraseProvider
 import ai.nexa.core.data.db.NexaDatabase
 import ai.nexa.core.data.db.NexaDatabaseFactory
@@ -51,4 +53,7 @@ object CoreDataModule {
 
     @Provides
     fun provideMessageDao(database: NexaDatabase): MessageDao = database.messageDao()
+
+    @Provides
+    fun provideConversationStore(implementation: RoomConversationStore): ConversationStore = implementation
 }

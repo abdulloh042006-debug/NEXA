@@ -2,42 +2,24 @@ package ai.nexa.kernel.chat
 
 import ai.nexa.core.ai.model.ChatDelta
 import ai.nexa.core.ai.testing.FakeChatModelPort
-import ai.nexa.core.data.db.NexaDatabase
-import android.content.Context
-import androidx.room.Room
-import androidx.test.core.app.ApplicationProvider
-import kotlinx.coroutines.flow.first
+import ai.nexa.core.data.conversation.ConversationStore
+import ai.nexa.core.data.conversation.StoredMessage
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.test.runTest
-import org.junit.After
-import org.junit.Before
 import org.junit.Test
-import org.junit.runner.RunWith
-import org.robolectric.RobolectricTestRunner
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 
-@RunWith(RobolectricTestRunner::class)
 class DefaultChatSessionPortTest {
-    private lateinit var database: NexaDatabase
-
-    @Before
-    fun setUp() {
-        database = Room.inMemoryDatabaseBuilder(
-            ApplicationProvider.getApplicationContext<Context>(),
-            NexaDatabase::class.java,
-        ).allowMainThreadQueries().build()
-    }
-
-    @After
-    fun tearDown() = database.close()
-
     @Test
-    fun userAndAssistantTurnsFlowThroughRoom() = runTest {
+    fun userAndAssistantTurnsFlowThroughStore() = runTest {
+        val store = InMemoryStore()
         val model = FakeChatModelPort(
             script = { listOf(ChatDelta.Token("Javob"), ChatDelta.Usage(1, 1)) },
         )
-        val session = session(model)
+        val session = DefaultChatSessionPort(store, model)
         val conversationId = session.createConversation()
 
         val events = session.sendMessage(conversationId, "  Salom  ").toList()
@@ -46,31 +28,46 @@ class DefaultChatSessionPortTest {
             listOf(ChatSendEvent.UserStored, ChatSendEvent.ReplyToken("Javob"), ChatSendEvent.ReplyStored),
             events,
         )
-        assertEquals(
-            listOf("Salom", "Javob"),
-            session.observeMessages(conversationId).first().map(ChatTurn::content),
-        )
+        assertEquals(listOf("Salom", "Javob"), store.messages.value.map(StoredMessage::content))
     }
 
     @Test
     fun modelFailureKeepsAlreadyStoredUserTurn() = runTest {
-        val session = session(FakeChatModelPort(failure = IllegalStateException("offline")))
+        val store = InMemoryStore()
+        val session = DefaultChatSessionPort(
+            store,
+            FakeChatModelPort(failure = IllegalStateException("offline")),
+        )
         val conversationId = session.createConversation()
 
         assertFailsWith<IllegalStateException> {
             session.sendMessage(conversationId, "Salom").toList()
         }
 
-        assertEquals(
-            listOf("Salom"),
-            session.observeMessages(conversationId).first().map(ChatTurn::content),
-        )
+        assertEquals(listOf("Salom"), store.messages.value.map(StoredMessage::content))
     }
 
-    private fun session(model: FakeChatModelPort) = DefaultChatSessionPort(
-        database = database,
-        conversationDao = database.conversationDao(),
-        messageDao = database.messageDao(),
-        chatModel = model,
-    )
+    private class InMemoryStore : ConversationStore {
+        val messages = MutableStateFlow<List<StoredMessage>>(emptyList())
+
+        override suspend fun createConversation(createdAtEpochMillis: Long): String = "conversation"
+
+        override fun observeMessages(conversationId: String): Flow<List<StoredMessage>> = messages
+
+        override suspend fun listMessages(conversationId: String): List<StoredMessage> = messages.value
+
+        override suspend fun appendMessage(
+            conversationId: String,
+            role: StoredMessage.Role,
+            content: String,
+            createdAtEpochMillis: Long,
+        ) {
+            messages.value = messages.value + StoredMessage(
+                id = messages.value.size.toString(),
+                role = role,
+                content = content,
+                createdAtEpochMillis = createdAtEpochMillis,
+            )
+        }
+    }
 }

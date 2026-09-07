@@ -6,60 +6,37 @@ import ai.nexa.core.ai.model.ChatRequest
 import ai.nexa.core.ai.model.LatencyBudget
 import ai.nexa.core.ai.model.PrivacyClass
 import ai.nexa.core.ai.port.ChatModelPort
-import ai.nexa.core.data.conversation.ConversationDao
-import ai.nexa.core.data.conversation.ConversationEntity
-import ai.nexa.core.data.conversation.MessageDao
-import ai.nexa.core.data.conversation.MessageEntity
-import ai.nexa.core.data.conversation.MessageRole
-import ai.nexa.core.data.db.NexaDatabase
-import androidx.room.withTransaction
+import ai.nexa.core.data.conversation.ConversationStore
+import ai.nexa.core.data.conversation.StoredMessage
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
-import java.util.UUID
 import javax.inject.Inject
 
 class DefaultChatSessionPort @Inject constructor(
-    private val database: NexaDatabase,
-    private val conversationDao: ConversationDao,
-    private val messageDao: MessageDao,
+    private val conversationStore: ConversationStore,
     private val chatModel: ChatModelPort,
 ) : ChatSessionPort {
     override suspend fun createConversation(): String {
-        val id = UUID.randomUUID().toString()
-        val now = System.currentTimeMillis()
-        conversationDao.insert(ConversationEntity(id, null, now, now))
-        return id
+        return conversationStore.createConversation(System.currentTimeMillis())
     }
 
     override fun observeMessages(conversationId: String): Flow<List<ChatTurn>> =
-        messageDao.observeForConversation(conversationId).map { messages -> messages.map(MessageEntity::toChatTurn) }
+        conversationStore.observeMessages(conversationId).map { messages -> messages.map { it.toChatTurn() } }
 
     override fun sendMessage(conversationId: String, content: String): Flow<ChatSendEvent> = flow {
         val normalized = content.trim()
         require(normalized.isNotEmpty()) { "Message cannot be blank" }
         val now = System.currentTimeMillis()
-        database.withTransaction {
-            checkNotNull(conversationDao.findById(conversationId)) { "Conversation does not exist" }
-            messageDao.insert(
-                MessageEntity(
-                    id = UUID.randomUUID().toString(),
-                    conversationId = conversationId,
-                    role = MessageRole.USER,
-                    content = normalized,
-                    createdAtEpochMillis = now,
-                ),
-            )
-            conversationDao.updateTimestamp(conversationId, now)
-        }
+        conversationStore.appendMessage(conversationId, StoredMessage.Role.USER, normalized, now)
         emit(ChatSendEvent.UserStored)
 
-        val history = messageDao.listForConversation(conversationId)
+        val history = conversationStore.listMessages(conversationId)
         val reply = StringBuilder()
         chatModel.streamChat(
             ChatRequest(
-                messages = history.map(MessageEntity::toModelMessage),
+                messages = history.map { it.toModelMessage() },
                 privacyClass = PrivacyClass.P2_SENSITIVE,
                 latencyBudget = LatencyBudget.INTERACTIVE,
             ),
@@ -77,37 +54,31 @@ class DefaultChatSessionPort @Inject constructor(
         val completedReply = reply.toString().trim()
         check(completedReply.isNotEmpty()) { "Model returned an empty response" }
         val completedAt = System.currentTimeMillis()
-        database.withTransaction {
-            messageDao.insert(
-                MessageEntity(
-                    id = UUID.randomUUID().toString(),
-                    conversationId = conversationId,
-                    role = MessageRole.ASSISTANT,
-                    content = completedReply,
-                    createdAtEpochMillis = completedAt,
-                ),
-            )
-            conversationDao.updateTimestamp(conversationId, completedAt)
-        }
+        conversationStore.appendMessage(
+            conversationId,
+            StoredMessage.Role.ASSISTANT,
+            completedReply,
+            completedAt,
+        )
         emit(ChatSendEvent.ReplyStored)
     }
 
-    private fun MessageEntity.toChatTurn() = ChatTurn(
+    private fun StoredMessage.toChatTurn() = ChatTurn(
         id = id,
         role = when (role) {
-            MessageRole.USER -> ChatTurn.Role.USER
-            MessageRole.ASSISTANT -> ChatTurn.Role.ASSISTANT
-            MessageRole.SYSTEM -> ChatTurn.Role.SYSTEM
+            StoredMessage.Role.USER -> ChatTurn.Role.USER
+            StoredMessage.Role.ASSISTANT -> ChatTurn.Role.ASSISTANT
+            StoredMessage.Role.SYSTEM -> ChatTurn.Role.SYSTEM
         },
         content = content,
         createdAtEpochMillis = createdAtEpochMillis,
     )
 
-    private fun MessageEntity.toModelMessage() = ChatMessage(
+    private fun StoredMessage.toModelMessage() = ChatMessage(
         role = when (role) {
-            MessageRole.USER -> ChatMessage.Role.USER
-            MessageRole.ASSISTANT -> ChatMessage.Role.ASSISTANT
-            MessageRole.SYSTEM -> ChatMessage.Role.SYSTEM
+            StoredMessage.Role.USER -> ChatMessage.Role.USER
+            StoredMessage.Role.ASSISTANT -> ChatMessage.Role.ASSISTANT
+            StoredMessage.Role.SYSTEM -> ChatMessage.Role.SYSTEM
         },
         content = content,
     )
