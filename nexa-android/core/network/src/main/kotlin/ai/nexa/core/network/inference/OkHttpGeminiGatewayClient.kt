@@ -22,7 +22,7 @@ import okhttp3.Response
 import java.io.IOException
 import java.util.concurrent.TimeUnit
 
-class OkHttpGeminiGatewayClient(
+internal class OkHttpGeminiGatewayClient(
     baseUrl: String,
     private val sessionTokenProvider: () -> String?,
     private val client: OkHttpClient = OkHttpClient(),
@@ -146,3 +146,8 @@ class OkHttpGeminiGatewayClient(
         const val HTTP_TOO_MANY_REQUESTS = 429
     }
 }
+
+fun createGeminiGatewayClient(
+    baseUrl: String,
+    sessionTokenProvider: () -> String?,
+): GeminiGatewayClient = OkHttpGeminiGatewayClient(baseUrl, sessionTokenProvider)

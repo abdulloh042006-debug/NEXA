@@ -6,7 +6,7 @@ import ai.nexa.core.ai.model.ModelManifest
 import ai.nexa.core.ai.model.PrivacyClass
 import ai.nexa.core.ai.port.ChatModelPort
 import ai.nexa.core.network.inference.GeminiGatewayClient
-import ai.nexa.core.network.inference.OkHttpGeminiGatewayClient
+import ai.nexa.core.network.inference.createGeminiGatewayClient
 import ai.nexa.router.gemini.GeminiApiAdapter
 import ai.nexa.router.offline.OfflineChatModelPort
 import dagger.Module
@@ -20,7 +20,7 @@ import javax.inject.Singleton
 object AiModule {
     @Provides
     @Singleton
-    fun provideGatewayClient(): GeminiGatewayClient = OkHttpGeminiGatewayClient(
+    fun provideGatewayClient(): GeminiGatewayClient = createGeminiGatewayClient(
         baseUrl = BuildConfig.NEXA_INFERENCE_BASE_URL,
         sessionTokenProvider = { null },
     )
