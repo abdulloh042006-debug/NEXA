@@ -5,3 +5,7 @@ plugins {
 android {
     namespace = "ai.nexa.kernel.api"
 }
+
+dependencies {
+    implementation(libs.kotlinx.coroutines.core)
+}

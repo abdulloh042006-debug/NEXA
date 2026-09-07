@@ -23,15 +23,22 @@ android {
     buildTypes {
         debug {
             buildConfigField("String", "NEXA_ENV", "\"dev\"")
+            buildConfigField("String", "NEXA_INFERENCE_BASE_URL", "\"https://api.nexa.app/\"")
         }
         release {
             buildConfigField("String", "NEXA_ENV", "\"prod\"")
+            buildConfigField("String", "NEXA_INFERENCE_BASE_URL", "\"https://api.nexa.app/\"")
         }
     }
 }
 
 dependencies {
+    implementation(projects.core.ai)
+    implementation(projects.core.data)
     implementation(projects.core.design)
+    implementation(projects.core.network)
+    implementation(projects.feature.chat)
+    implementation(projects.kernel.impl)
 
     // DI wiring only (SPEC §4.3): the app shell aggregates impl modules' Hilt bindings.
     implementation(projects.router.impl)
