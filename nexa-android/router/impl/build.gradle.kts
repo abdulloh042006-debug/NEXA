@@ -9,6 +9,7 @@ android {
 dependencies {
     api(project(":router:api"))
 
+    implementation(projects.core.network)
     implementation(libs.kotlinx.coroutines.core)
 
     testImplementation(libs.junit)
