@@ -3,8 +3,6 @@ package ai.nexa.core.data.settings
 import ai.nexa.core.proto.LocalSettings
 import ai.nexa.core.proto.defaultLocalSettings
 import androidx.datastore.core.CorruptionException
-import java.io.IOException
-import kotlin.test.assertFailsWith
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancelAndJoin
@@ -16,6 +14,8 @@ import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
+import java.io.IOException
+import kotlin.test.assertFailsWith
 
 class LocalSettingsStoreTest {
     @get:Rule

@@ -3,18 +3,18 @@ package ai.nexa.core.data.settings
 import ai.nexa.core.proto.LocalSettings
 import ai.nexa.core.proto.defaultLocalSettings
 import androidx.datastore.core.CorruptionException
-import java.io.ByteArrayInputStream
-import java.io.ByteArrayOutputStream
-import java.io.IOException
-import java.io.InputStream
-import java.io.OutputStream
-import kotlin.test.assertFailsWith
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertSame
 import org.junit.Test
+import java.io.ByteArrayInputStream
+import java.io.ByteArrayOutputStream
+import java.io.IOException
+import java.io.InputStream
+import java.io.OutputStream
+import kotlin.test.assertFailsWith
 
 class LocalSettingsSerializerTest {
     private val serializer = LocalSettingsSerializer

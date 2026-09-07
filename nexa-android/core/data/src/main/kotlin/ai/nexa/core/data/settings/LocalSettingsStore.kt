@@ -3,10 +3,10 @@ package ai.nexa.core.data.settings
 import ai.nexa.core.proto.LocalSettings
 import androidx.datastore.core.DataStore
 import androidx.datastore.core.DataStoreFactory
-import java.io.File
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
+import java.io.File
 
 /**
  * Single-process persistence seam for the future core:data singleton binding (SPEC section 8.2).
