@@ -1,9 +1,7 @@
 package ai.nexa.router.api
 
 import ai.nexa.core.ai.model.ChatDelta
-import ai.nexa.core.ai.model.ChatRequest
 import ai.nexa.core.ai.model.Embedding
-import ai.nexa.core.ai.model.EmbeddingPurpose
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -11,7 +9,7 @@ import kotlinx.coroutines.flow.Flow
  * at what cost, under which privacy constraint — decided deterministically and
  * well inside the 10 ms decision budget.
  *
- * Callers express intent through [ChatRequest] only; there is deliberately no
+ * Callers express intent through [ChatRouteRequest] only; there is deliberately no
  * way to name a model or vendor (AF-04 works both directions). Only `:core:ai`
  * and `:router` know models exist — the router is the single client-side
  * authority over model placement.
@@ -23,7 +21,7 @@ interface RouterPort {
      * "why this model?" answer (ARCHITECTURE §11.4). Deterministic: the same
      * request against the same registered ports yields the same decision.
      */
-    suspend fun resolveChat(request: ChatRequest): RouteDecision
+    suspend fun resolveChat(request: ChatRouteRequest): RouteDecision
 
     /**
      * Routes [request] and streams from the winning chat model.
@@ -36,13 +34,13 @@ interface RouterPort {
      * model survives the hard filters the flow fails with
      * [NoEligibleModelException].
      */
-    fun streamChat(request: ChatRequest): Flow<ChatDelta>
+    fun streamChat(request: ChatRouteRequest): Flow<ChatDelta>
 
     /**
      * Resolves the embedding routing decision without executing it — same
      * inspectability contract as [resolveChat].
      */
-    suspend fun resolveEmbedding(purpose: EmbeddingPurpose): RouteDecision
+    suspend fun resolveEmbedding(request: EmbeddingRouteRequest): RouteDecision
 
     /**
      * Embeds [texts] on the winning embedding model, one [Embedding] per input
@@ -55,5 +53,5 @@ interface RouterPort {
      * silent router choice. Throws [NoEligibleModelException] when no
      * registered embedder survives the filters.
      */
-    suspend fun routeEmbedding(texts: List<String>, purpose: EmbeddingPurpose): List<Embedding>
+    suspend fun routeEmbedding(texts: List<String>, request: EmbeddingRouteRequest): List<Embedding>
 }

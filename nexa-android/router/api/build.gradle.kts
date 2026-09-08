@@ -9,4 +9,7 @@ plugins {
 
 dependencies {
     api(project(":core:ai"))
+
+    testImplementation(libs.junit)
+    testImplementation(libs.kotlin.test)
 }
