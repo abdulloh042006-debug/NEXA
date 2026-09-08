@@ -10,10 +10,10 @@ import ai.nexa.core.network.inference.GeminiGatewayClient
 import ai.nexa.core.network.inference.GeminiGatewayEvent
 import ai.nexa.core.network.inference.GeminiGatewayRequest
 import ai.nexa.core.network.inference.InferenceGatewayException
-import java.io.IOException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.map
+import java.io.IOException
 
 /**
  * Gemini model adapter routed through the NEXA Inference Service.
@@ -72,12 +72,17 @@ class GeminiApiAdapter(
         is InferenceGatewayException.Unauthorized -> ModelInvocationException.AuthenticationUnavailable()
         is InferenceGatewayException.RateLimited -> ModelInvocationException.RateLimited()
         is InferenceGatewayException.ProtocolFailure -> ModelInvocationException.ProtocolFailure(this)
-        is InferenceGatewayException.HttpFailure -> if (statusCode in 400..499) {
+        is InferenceGatewayException.HttpFailure -> if (statusCode in CLIENT_ERROR_MIN..CLIENT_ERROR_MAX) {
             ModelInvocationException.Rejected()
         } else {
             ModelInvocationException.ProviderFailure(this)
         }
         is IOException -> ModelInvocationException.NetworkUnavailable(this)
         else -> ModelInvocationException.ProviderFailure(this)
+    }
+
+    private companion object {
+        const val CLIENT_ERROR_MIN = 400
+        const val CLIENT_ERROR_MAX = 499
     }
 }

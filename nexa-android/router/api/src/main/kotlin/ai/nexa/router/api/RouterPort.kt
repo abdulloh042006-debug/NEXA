@@ -11,7 +11,6 @@ package ai.nexa.router.api
  * authority over model placement.
  */
 interface RouterPort {
-
     /**
      * Resolves the routing decision without executing it — the inspectable
      * "why this model?" answer (ARCHITECTURE §11.4). Deterministic: the same
@@ -24,5 +23,4 @@ interface RouterPort {
      * inspectability contract as [resolveChat].
      */
     suspend fun resolveEmbedding(request: EmbeddingRouteRequest): RouteDecision
-
 }
