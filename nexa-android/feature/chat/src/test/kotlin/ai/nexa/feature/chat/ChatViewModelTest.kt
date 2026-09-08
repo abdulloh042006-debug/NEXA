@@ -1,6 +1,7 @@
 package ai.nexa.feature.chat
 
 import ai.nexa.kernel.chat.ChatSendEvent
+import ai.nexa.kernel.chat.ChatFailure
 import ai.nexa.kernel.chat.ChatSessionPort
 import ai.nexa.kernel.chat.ChatTurn
 import kotlinx.coroutines.Dispatchers
@@ -74,7 +75,10 @@ class ChatViewModelTest {
             sentContent = content
             messages.value = listOf(ChatTurn("user", ChatTurn.Role.USER, content, 1))
             emit(ChatSendEvent.UserStored)
-            if (fail) error("offline")
+            if (fail) {
+                emit(ChatSendEvent.Failed(ChatFailure.MODEL_UNAVAILABLE))
+                return@flow
+            }
             emit(ChatSendEvent.ReplyToken("Javob"))
             messages.value = messages.value + ChatTurn("assistant", ChatTurn.Role.ASSISTANT, "Javob", 2)
             emit(ChatSendEvent.ReplyStored)

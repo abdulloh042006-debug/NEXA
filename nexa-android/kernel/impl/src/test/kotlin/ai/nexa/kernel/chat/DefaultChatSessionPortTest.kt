@@ -1,34 +1,38 @@
 package ai.nexa.kernel.chat
 
 import ai.nexa.core.ai.model.ChatDelta
-import ai.nexa.core.ai.model.Embedding
-import ai.nexa.core.ai.testing.FakeChatModelPort
 import ai.nexa.core.data.conversation.ConversationStore
 import ai.nexa.core.data.conversation.StoredMessage
-import ai.nexa.router.api.ChatRouteRequest
-import ai.nexa.router.api.EmbeddingRouteRequest
+import ai.nexa.kernel.inference.InferenceEvent
+import ai.nexa.kernel.inference.InferenceExecution
+import ai.nexa.kernel.inference.InferenceExecutionRequest
+import ai.nexa.kernel.inference.InferenceFailure
+import ai.nexa.kernel.inference.InferenceOrchestratorPort
 import ai.nexa.router.api.NetworkState
-import ai.nexa.router.api.RouteDecision
-import ai.nexa.router.api.RouterPort
 import ai.nexa.router.api.RoutingDeviceState
 import ai.nexa.router.api.RoutingEnvironmentPort
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.test.runTest
 import org.junit.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertFailsWith
 
 class DefaultChatSessionPortTest {
     @Test
     fun userAndAssistantTurnsFlowThroughStore() = runTest {
         val store = InMemoryStore()
-        val model = FakeChatModelPort(
-            script = { listOf(ChatDelta.Token("Javob"), ChatDelta.Usage(1, 1)) },
+        val orchestrator = RecordingOrchestrator(
+            listOf(
+                InferenceEvent.Queued(1),
+                InferenceEvent.Started("model@v1", "provider", 2),
+                InferenceEvent.Delta(ChatDelta.Token("Javob"), 3),
+                InferenceEvent.Delta(ChatDelta.Usage(1, 1), 4),
+                InferenceEvent.Completed(5),
+            ),
         )
-        val router = RecordingRouter(model)
-        val session = DefaultChatSessionPort(store, router, TEST_ENVIRONMENT)
+        val session = DefaultChatSessionPort(store, orchestrator, TEST_ENVIRONMENT)
         val conversationId = session.createConversation()
 
         val events = session.sendMessage(conversationId, "  Salom  ").toList()
@@ -38,8 +42,8 @@ class DefaultChatSessionPortTest {
             events,
         )
         assertEquals(listOf("Salom", "Javob"), store.messages.value.map(StoredMessage::content))
-        assertEquals(TEST_DEVICE_STATE, router.lastRequest?.deviceState)
-        assertEquals(2, router.lastRequest?.estimatedInputTokens)
+        assertEquals(TEST_DEVICE_STATE, orchestrator.lastRequest?.routeRequest?.deviceState)
+        assertEquals(2, orchestrator.lastRequest?.routeRequest?.estimatedInputTokens)
     }
 
     @Test
@@ -47,36 +51,36 @@ class DefaultChatSessionPortTest {
         val store = InMemoryStore()
         val session = DefaultChatSessionPort(
             store,
-            RecordingRouter(FakeChatModelPort(failure = IllegalStateException("offline"))),
+            RecordingOrchestrator(
+                listOf(
+                    InferenceEvent.Failed(
+                        InferenceFailure(InferenceFailure.Code.BACKEND_UNAVAILABLE, true),
+                        1,
+                    ),
+                ),
+            ),
             TEST_ENVIRONMENT,
         )
         val conversationId = session.createConversation()
 
-        assertFailsWith<IllegalStateException> {
-            session.sendMessage(conversationId, "Salom").toList()
-        }
+        val events = session.sendMessage(conversationId, "Salom").toList()
 
         assertEquals(listOf("Salom"), store.messages.value.map(StoredMessage::content))
+        assertEquals(ChatSendEvent.Failed(ChatFailure.MODEL_UNAVAILABLE), events.last())
     }
 
-    private class RecordingRouter(
-        private val model: FakeChatModelPort,
-    ) : RouterPort {
-        var lastRequest: ChatRouteRequest? = null
+    private class RecordingOrchestrator(
+        private val scriptedEvents: List<InferenceEvent>,
+    ) : InferenceOrchestratorPort {
+        var lastRequest: InferenceExecutionRequest? = null
 
-        override suspend fun resolveChat(request: ChatRouteRequest): RouteDecision = error("not used")
-
-        override fun streamChat(request: ChatRouteRequest): Flow<ChatDelta> {
+        override fun start(request: InferenceExecutionRequest): InferenceExecution {
             lastRequest = request
-            return model.streamChat(request.request)
+            return object : InferenceExecution {
+                override val events = flowOf(*scriptedEvents.toTypedArray())
+                override fun cancel(): Boolean = false
+            }
         }
-
-        override suspend fun resolveEmbedding(request: EmbeddingRouteRequest): RouteDecision = error("not used")
-
-        override suspend fun routeEmbedding(
-            texts: List<String>,
-            request: EmbeddingRouteRequest,
-        ): List<Embedding> = error("not used")
     }
 
     private class InMemoryStore : ConversationStore {

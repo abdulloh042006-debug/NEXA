@@ -1,6 +1,7 @@
 package ai.nexa.feature.chat
 
 import ai.nexa.kernel.chat.ChatSendEvent
+import ai.nexa.kernel.chat.ChatFailure
 import ai.nexa.kernel.chat.ChatSessionPort
 import ai.nexa.kernel.chat.ChatTurn
 import androidx.lifecycle.ViewModel
@@ -58,12 +59,22 @@ class ChatViewModel @Inject constructor(
                     when (event) {
                         ChatSendEvent.UserStored -> Unit
                         ChatSendEvent.ReplyStored -> mutableState.update { it.copy(streamedReply = "") }
+                        is ChatSendEvent.Failed -> mutableState.update {
+                            it.copy(streamedReply = "", error = event.reason.toUiError())
+                        }
                         is ChatSendEvent.ReplyToken -> mutableState.update {
                             it.copy(streamedReply = it.streamedReply + event.text)
                         }
                     }
                 }
         }
+    }
+
+    private fun ChatFailure.toUiError(): ChatUiError = when (this) {
+        ChatFailure.TIMEOUT -> ChatUiError.TIMEOUT
+        ChatFailure.CANCELLED -> ChatUiError.CANCELLED
+        ChatFailure.INVALID_RESPONSE -> ChatUiError.INVALID_RESPONSE
+        ChatFailure.MODEL_UNAVAILABLE -> ChatUiError.MODEL_UNAVAILABLE
     }
 }
 
@@ -76,4 +87,4 @@ data class ChatUiState(
     val error: ChatUiError? = null,
 )
 
-enum class ChatUiError { MODEL_UNAVAILABLE }
+enum class ChatUiError { MODEL_UNAVAILABLE, TIMEOUT, CANCELLED, INVALID_RESPONSE }

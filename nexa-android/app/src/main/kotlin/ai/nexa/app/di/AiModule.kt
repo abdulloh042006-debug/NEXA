@@ -5,6 +5,7 @@ import ai.nexa.core.ai.model.Language
 import ai.nexa.core.ai.model.ModelManifest
 import ai.nexa.core.ai.model.ModelProviderId
 import ai.nexa.core.ai.model.PrivacyClass
+import ai.nexa.core.ai.port.ChatModelRegistry
 import ai.nexa.core.network.inference.GeminiGatewayClient
 import ai.nexa.core.network.inference.createGeminiGatewayClient
 import ai.nexa.router.DeterministicModelRouter
@@ -42,9 +43,15 @@ object AiModule {
     @Provides
     @Singleton
     fun provideRouter(
+        registry: ChatModelRegistry,
+    ): RouterPort = DeterministicModelRouter(registry.models)
+
+    @Provides
+    @Singleton
+    fun provideChatModelRegistry(
         gemini: GeminiApiAdapter,
         offline: OfflineChatModelPort,
-    ): RouterPort = DeterministicModelRouter(listOf(gemini, offline))
+    ): ChatModelRegistry = ChatModelRegistry(listOf(gemini, offline))
 
     @Provides
     @Singleton
