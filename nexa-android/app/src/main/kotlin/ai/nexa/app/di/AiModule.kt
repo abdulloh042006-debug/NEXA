@@ -7,12 +7,12 @@ import ai.nexa.core.ai.model.ModelProviderId
 import ai.nexa.core.ai.model.PrivacyClass
 import ai.nexa.core.network.inference.GeminiGatewayClient
 import ai.nexa.core.network.inference.createGeminiGatewayClient
-import ai.nexa.router.gemini.GeminiApiAdapter
 import ai.nexa.router.DeterministicModelRouter
 import ai.nexa.router.api.NetworkState
 import ai.nexa.router.api.RouterPort
 import ai.nexa.router.api.RoutingDeviceState
 import ai.nexa.router.api.RoutingEnvironmentPort
+import ai.nexa.router.gemini.GeminiApiAdapter
 import ai.nexa.router.offline.OfflineChatModelPort
 import dagger.Module
 import dagger.Provides

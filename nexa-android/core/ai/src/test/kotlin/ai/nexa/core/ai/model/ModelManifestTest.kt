@@ -1,8 +1,8 @@
 package ai.nexa.core.ai.model
 
 import ai.nexa.core.ai.testing.FakeManifests
-import org.junit.Assert.assertFalse
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Test

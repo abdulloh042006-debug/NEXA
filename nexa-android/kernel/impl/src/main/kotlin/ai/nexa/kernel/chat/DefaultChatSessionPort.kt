@@ -38,10 +38,10 @@ class DefaultChatSessionPort @Inject constructor(
         val history = conversationStore.listMessages(conversationId)
         val reply = StringBuilder()
         val request = ChatRequest(
-                messages = history.map { it.toModelMessage() },
-                privacyClass = PrivacyClass.P2_SENSITIVE,
-                latencyBudget = LatencyBudget.INTERACTIVE,
-            )
+            messages = history.map { it.toModelMessage() },
+            privacyClass = PrivacyClass.P2_SENSITIVE,
+            latencyBudget = LatencyBudget.INTERACTIVE,
+        )
         router.streamChat(
             ChatRouteRequest(
                 request = request,
