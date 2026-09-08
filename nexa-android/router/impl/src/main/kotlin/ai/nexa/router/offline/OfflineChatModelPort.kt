@@ -4,6 +4,7 @@ import ai.nexa.core.ai.model.ChatDelta
 import ai.nexa.core.ai.model.ChatRequest
 import ai.nexa.core.ai.model.ModelManifest
 import ai.nexa.core.ai.port.ChatModelPort
+import ai.nexa.core.ai.port.ModelInvocationException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 
@@ -12,8 +13,6 @@ class OfflineChatModelPort(
     override val manifest: ModelManifest,
 ) : ChatModelPort {
     override fun streamChat(request: ChatRequest): Flow<ChatDelta> = flow {
-        throw ModelUnavailableException()
+        throw ModelInvocationException.Unavailable()
     }
 }
-
-class ModelUnavailableException : IllegalStateException("No privacy-compatible chat model is configured")

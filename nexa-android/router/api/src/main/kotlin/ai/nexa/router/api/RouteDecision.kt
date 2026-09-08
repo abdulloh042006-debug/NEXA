@@ -14,8 +14,31 @@ data class RouteDecision(
     /** Transparent score per surviving manifest id, in [ranked] order. */
     val scores: Map<String, Double>,
     /** Hard-filtered manifest ids and the first reason each was rejected. */
-    val excluded: Map<String, ExclusionReason>,
+    val excluded: Map<String, List<ExclusionReason>>,
+    /** Privacy-safe audit record: model metadata and reason codes only, never request content. */
+    val record: RoutingDecisionRecord,
 ) {
     /** The winning manifest, or null when nothing survived the hard filters. */
     val chosen: ModelManifest? get() = ranked.firstOrNull()
+}
+
+data class RoutingDecisionRecord(
+    val selectedModelId: String?,
+    val candidates: List<CandidateDecisionRecord>,
+    val selectionReasons: Set<SelectionReason>,
+)
+
+data class CandidateDecisionRecord(
+    val modelId: String,
+    val providerId: String,
+    val eligible: Boolean,
+    val score: Double?,
+    val exclusionReasons: List<ExclusionReason>,
+)
+
+enum class SelectionReason {
+    HIGHEST_POLICY_SCORE,
+    DETERMINISTIC_ID_TIE_BREAK,
+    ONLY_ELIGIBLE_MODEL,
+    NO_ELIGIBLE_MODEL,
 }
