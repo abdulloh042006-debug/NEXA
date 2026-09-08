@@ -26,9 +26,9 @@ import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonPrimitive
 import javax.inject.Inject
 
-class JsonPlanCompiler @Inject constructor(
-    private val validator: PlanValidator = PlanValidator(),
-) : PlanCompiler {
+class JsonPlanCompiler @Inject constructor() : PlanCompiler {
+    private val validator = PlanValidator()
+
     override fun compile(proposal: UntrustedPlanProposal): PlanCompilationResult {
         val source = proposal.content
         if (source.isBlank()) return rejected(CompilationCode.EMPTY_PROPOSAL)

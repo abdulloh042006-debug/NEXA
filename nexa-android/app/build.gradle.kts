@@ -33,6 +33,7 @@ android {
 }
 
 dependencies {
+    implementation(projects.cognition.planning.impl)
     implementation(projects.core.ai)
     implementation(projects.core.data)
     implementation(projects.core.design)
