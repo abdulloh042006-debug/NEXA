@@ -26,4 +26,8 @@ sealed interface ChatSendEvent {
     data class ReplyToken(val text: String) : ChatSendEvent
 
     data object ReplyStored : ChatSendEvent
+
+    data class Failed(val reason: ChatFailure) : ChatSendEvent
 }
+
+enum class ChatFailure { MODEL_UNAVAILABLE, TIMEOUT, CANCELLED, INVALID_RESPONSE }
