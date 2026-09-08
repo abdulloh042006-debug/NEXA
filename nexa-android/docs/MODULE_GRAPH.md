@@ -6,7 +6,7 @@
 
 ```
 :app ●                          composition root (flavors: gms/nogms)
-:kernel:{api,impl} ●            typed blackboard and chat orchestration
+:kernel:{api,impl} ●            typed blackboard and inference/chat orchestration
 :reasoning:{api,impl}           reasoning pipeline seam
 :router:{api,impl} ●            deterministic manifest-driven model router
 :cognition:{worldmodel,goal,planning,critic,reflection,learning,curiosity,preference}:{api,impl}
@@ -53,7 +53,7 @@ graph TD
 
 Type-level edges (api→common, feature→design/common, platform→permission/common, impl→own api) are wired by the convention plugins — a new module is born lawful.
 
-The `:app` composition root supplies concrete model adapters and an explicit runtime-device snapshot. The kernel sends structured intent to `RouterPort`; neither the kernel nor UI selects a provider. See [PHASE2_KERNEL_ROUTING.md](PHASE2_KERNEL_ROUTING.md).
+The `:app` composition root supplies a typed backend registry and an explicit runtime-device snapshot. The kernel orchestrator asks `RouterPort` for a deterministic ranked decision, resolves the selected adapter from that registry, and owns streaming lifecycle. Neither the UI nor router executes provider-specific logic. See [PHASE2_KERNEL_ROUTING.md](PHASE2_KERNEL_ROUTING.md) and [PHASE3_INFERENCE_ORCHESTRATION.md](PHASE3_INFERENCE_ORCHESTRATION.md).
 
 ## The law (SPEC §4.3 — Konsist-enforced, growing per ED-11)
 

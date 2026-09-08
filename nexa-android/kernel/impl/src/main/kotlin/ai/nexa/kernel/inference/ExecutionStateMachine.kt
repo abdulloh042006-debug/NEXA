@@ -5,17 +5,25 @@ internal class ExecutionStateMachine {
 
     @Synchronized
     fun accept(event: InferenceEvent): Boolean {
-        if (state.terminal) return false
-        state = when (event) {
-            is InferenceEvent.Queued -> if (state == State.CREATED) State.QUEUED else return false
-            is InferenceEvent.Started -> if (state in setOf(State.QUEUED, State.STARTED)) State.STARTED else return false
-            is InferenceEvent.Delta -> if (state in setOf(State.STARTED, State.STREAMING)) State.STREAMING else return false
-            is InferenceEvent.Completed -> if (state in setOf(State.STARTED, State.STREAMING)) State.COMPLETED else return false
-            is InferenceEvent.Cancelled -> State.CANCELLED
-            is InferenceEvent.TimedOut -> State.TIMED_OUT
-            is InferenceEvent.Failed -> State.FAILED
+        val next = if (state.terminal) null else nextState(event)
+        if (next != null) state = next
+        return next != null
+    }
+
+    private fun nextState(event: InferenceEvent): State? = when (event) {
+        is InferenceEvent.Queued -> State.QUEUED.takeIf { state == State.CREATED }
+        is InferenceEvent.Started -> State.STARTED.takeIf {
+            state in setOf(State.QUEUED, State.STARTED)
         }
-        return true
+        is InferenceEvent.Delta -> State.STREAMING.takeIf {
+            state in setOf(State.STARTED, State.STREAMING)
+        }
+        is InferenceEvent.Completed -> State.COMPLETED.takeIf {
+            state in setOf(State.STARTED, State.STREAMING)
+        }
+        is InferenceEvent.Cancelled -> State.CANCELLED
+        is InferenceEvent.TimedOut -> State.TIMED_OUT
+        is InferenceEvent.Failed -> State.FAILED
     }
 
     private enum class State(val terminal: Boolean = false) {

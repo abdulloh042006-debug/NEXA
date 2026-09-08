@@ -18,12 +18,13 @@ import ai.nexa.router.api.RouterPort
 import ai.nexa.router.api.RoutingDecisionRecord
 import ai.nexa.router.api.RoutingDeviceState
 import ai.nexa.router.api.SelectionReason
-import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
@@ -37,11 +38,18 @@ import kotlin.test.assertTrue
 class DefaultInferenceOrchestratorTest {
     @Test
     fun `normal stream preserves order and completes once`() = runTest {
-        val model = FakeChatModelPort(script = { listOf(ChatDelta.Token("a"), ChatDelta.Token("b")) })
+        val model = FakeChatModelPort(
+            script = { listOf(ChatDelta.Token("a"), ChatDelta.Token("b")) },
+        )
 
         val events = orchestrator(listOf(model), decision(model)).start(request()).events.toList()
 
-        assertEquals(listOf("a", "b"), events.filterIsInstance<InferenceEvent.Delta>().map { (it.value as ChatDelta.Token).text })
+        assertEquals(
+            listOf("a", "b"),
+            events.filterIsInstance<InferenceEvent.Delta>().map {
+                (it.value as ChatDelta.Token).text
+            },
+        )
         assertEquals(1, events.count { it is InferenceEvent.Completed })
     }
 
@@ -62,12 +70,20 @@ class DefaultInferenceOrchestratorTest {
             script = { emptyList() },
             failure = ModelInvocationException.ProviderFailure(IllegalStateException()),
         )
-        val second = FakeChatModelPort(manifest = FakeManifests.chat(id = "second@v1"), script = { listOf(ChatDelta.Token("ok")) })
+        val second = FakeChatModelPort(
+            manifest = FakeManifests.chat(id = "second@v1"),
+            script = { listOf(ChatDelta.Token("ok")) },
+        )
 
-        val events = orchestrator(listOf(first, second), decision(first, second)).start(request()).events.toList()
+        val events = orchestrator(listOf(first, second), decision(first, second))
+            .start(request()).events.toList()
 
-        assertEquals(listOf("first@v1", "second@v1"), events.filterIsInstance<InferenceEvent.Started>().map { it.modelId })
-        assertEquals("ok", (events.filterIsInstance<InferenceEvent.Delta>().single().value as ChatDelta.Token).text)
+        assertEquals(
+            listOf("first@v1", "second@v1"),
+            events.filterIsInstance<InferenceEvent.Started>().map { it.modelId },
+        )
+        val token = events.filterIsInstance<InferenceEvent.Delta>().single().value as ChatDelta.Token
+        assertEquals("ok", token.text)
     }
 
     @Test
@@ -133,6 +149,33 @@ class DefaultInferenceOrchestratorTest {
     }
 
     @Test
+    fun `timeout during stream preserves delta and terminates once`() = runTest {
+        val model = suspendingModel(emitFirst = true)
+
+        val events = orchestrator(listOf(model), decision(model)).start(request(timeoutMillis = 100)).events.toList()
+
+        assertEquals(1, events.count { it is InferenceEvent.Delta })
+        assertEquals(1, events.count { it is InferenceEvent.TimedOut })
+        assertIs<InferenceEvent.TimedOut>(events.last())
+    }
+
+    @Test
+    fun `timeout cancel race produces only one terminal event`() = runTest {
+        val model = suspendingModel(emitFirst = true)
+        val execution = orchestrator(listOf(model), decision(model)).start(request(timeoutMillis = 100))
+        val events = mutableListOf<InferenceEvent>()
+        val collector = launch { events += execution.events.toList() }
+        runCurrent()
+
+        advanceTimeBy(100)
+        execution.cancel()
+        advanceUntilIdle()
+        collector.join()
+
+        assertEquals(1, events.count { it is InferenceEvent.Cancelled || it is InferenceEvent.TimedOut })
+    }
+
+    @Test
     fun `observer records lifecycle without content`() = runTest {
         val records = mutableListOf<InferenceExecutionRecord>()
         val model = FakeChatModelPort(script = { listOf(ChatDelta.Token("private answer")) })
@@ -155,7 +198,14 @@ class DefaultInferenceOrchestratorTest {
         val machine = ExecutionStateMachine()
         assertTrue(machine.accept(InferenceEvent.Cancelled(1)))
         assertFalse(machine.accept(InferenceEvent.Completed(2)))
-        assertFalse(machine.accept(InferenceEvent.Failed(InferenceFailure(InferenceFailure.Code.PROVIDER_INTERNAL, true), 3)))
+        assertFalse(
+            machine.accept(
+                InferenceEvent.Failed(
+                    InferenceFailure(InferenceFailure.Code.PROVIDER_INTERNAL, true),
+                    3,
+                ),
+            ),
+        )
     }
 
     private fun orchestrator(models: List<ChatModelPort>, decision: RouteDecision) =
@@ -183,7 +233,11 @@ class DefaultInferenceOrchestratorTest {
         record = RoutingDecisionRecord(
             selectedModelId = models.firstOrNull()?.manifest?.id,
             candidates = emptyList(),
-            selectionReasons = if (models.isEmpty()) setOf(SelectionReason.NO_ELIGIBLE_MODEL) else setOf(SelectionReason.ONLY_ELIGIBLE_MODEL),
+            selectionReasons = if (models.isEmpty()) {
+                setOf(SelectionReason.NO_ELIGIBLE_MODEL)
+            } else {
+                setOf(SelectionReason.ONLY_ELIGIBLE_MODEL)
+            },
         ),
     )
 

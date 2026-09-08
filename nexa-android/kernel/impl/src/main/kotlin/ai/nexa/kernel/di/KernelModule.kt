@@ -1,10 +1,10 @@
 package ai.nexa.kernel.di
 
+import ai.nexa.core.ai.port.ChatModelRegistry
 import ai.nexa.kernel.blackboard.Blackboard
 import ai.nexa.kernel.blackboard.InMemoryBlackboard
 import ai.nexa.kernel.chat.ChatSessionPort
 import ai.nexa.kernel.chat.DefaultChatSessionPort
-import ai.nexa.core.ai.port.ChatModelRegistry
 import ai.nexa.kernel.inference.DefaultInferenceOrchestrator
 import ai.nexa.kernel.inference.InferenceOrchestratorPort
 import ai.nexa.router.api.RouterPort

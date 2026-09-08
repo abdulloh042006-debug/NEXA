@@ -7,20 +7,20 @@ import ai.nexa.core.ai.model.LatencyBudget
 import ai.nexa.core.ai.model.PrivacyClass
 import ai.nexa.core.data.conversation.ConversationStore
 import ai.nexa.core.data.conversation.StoredMessage
-import ai.nexa.router.api.ChatRouteRequest
-import ai.nexa.router.api.RoutingEnvironmentPort
 import ai.nexa.kernel.inference.InferenceCorrelationId
 import ai.nexa.kernel.inference.InferenceEvent
 import ai.nexa.kernel.inference.InferenceExecutionId
 import ai.nexa.kernel.inference.InferenceExecutionRequest
 import ai.nexa.kernel.inference.InferenceFailure
 import ai.nexa.kernel.inference.InferenceOrchestratorPort
-import java.nio.charset.StandardCharsets
-import java.util.UUID
+import ai.nexa.router.api.ChatRouteRequest
+import ai.nexa.router.api.RoutingEnvironmentPort
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
+import java.nio.charset.StandardCharsets
+import java.util.UUID
 import javax.inject.Inject
 
 class DefaultChatSessionPort @Inject constructor(

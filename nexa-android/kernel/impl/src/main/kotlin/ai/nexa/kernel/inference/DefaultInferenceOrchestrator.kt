@@ -1,9 +1,10 @@
 package ai.nexa.kernel.inference
 
+import ai.nexa.core.ai.model.ChatDelta
+import ai.nexa.core.ai.port.ChatModelPort
 import ai.nexa.core.ai.port.ChatModelRegistry
 import ai.nexa.core.ai.port.ModelInvocationException
 import ai.nexa.router.api.RouterPort
-import java.util.concurrent.atomic.AtomicBoolean
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.TimeoutCancellationException
@@ -14,6 +15,7 @@ import kotlinx.coroutines.flow.channelFlow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeout
+import java.util.concurrent.atomic.AtomicBoolean
 
 class DefaultInferenceOrchestrator(
     private val router: RouterPort,
@@ -66,7 +68,9 @@ class DefaultInferenceOrchestrator(
                 val event = InferenceEvent.Cancelled(now())
                 if (lifecycle.accept(event)) observe(request, event)
                 throw cancelled
-            } catch (failure: Throwable) {
+            } catch (_: BackendResolutionException) {
+                publish(lifecycle, backendUnavailable(now()))
+            } catch (failure: ModelInvocationException) {
                 publish(lifecycle, InferenceEvent.Failed(failure.toInferenceFailure(), now()))
             }
         }
@@ -77,31 +81,56 @@ class DefaultInferenceOrchestrator(
         ) {
             val decision = router.resolveChat(request.routeRequest)
             if (decision.ranked.isEmpty()) {
-                publish(lifecycle, InferenceEvent.Failed(InferenceFailure(InferenceFailure.Code.NO_ELIGIBLE_MODEL, false), now()))
-                return
-            }
-            var lastFailure: ModelInvocationException? = null
-            decision.ranked.forEachIndexed { index, manifest ->
-                val backend = registry.resolve(manifest.id)
-                if (backend == null) {
-                    publish(lifecycle, InferenceEvent.Failed(InferenceFailure(InferenceFailure.Code.BACKEND_UNAVAILABLE, false), now()))
-                    return
+                publish(
+                    lifecycle,
+                    InferenceEvent.Failed(
+                        InferenceFailure(InferenceFailure.Code.NO_ELIGIBLE_MODEL, false),
+                        now(),
+                    ),
+                )
+            } else {
+                for ((index, manifest) in decision.ranked.withIndex()) {
+                    val backend = registry.resolve(manifest.id) ?: throw BackendResolutionException()
+                    publish(
+                        lifecycle,
+                        InferenceEvent.Started(manifest.id, manifest.providerId.value, now()),
+                    )
+                    val completed = executeAttempt(
+                        backend,
+                        request,
+                        lifecycle,
+                        isLast = index == decision.ranked.lastIndex,
+                    )
+                    if (completed) break
                 }
-                publish(lifecycle, InferenceEvent.Started(manifest.id, manifest.providerId.value, now()))
-                var emitted = false
-                try {
-                    backend.streamChat(request.routeRequest.request).collect { delta ->
-                        emitted = true
-                        publish(lifecycle, InferenceEvent.Delta(delta, now()))
-                    }
-                    publish(lifecycle, InferenceEvent.Completed(now()))
-                    return
-                } catch (failure: ModelInvocationException) {
-                    if (emitted || index == decision.ranked.lastIndex) throw failure
-                    lastFailure = failure
-                }
             }
-            checkNotNull(lastFailure).let { throw it }
+        }
+
+        private suspend fun ProducerScope<InferenceEvent>.executeAttempt(
+            backend: ChatModelPort,
+            request: InferenceExecutionRequest,
+            lifecycle: ExecutionStateMachine,
+            isLast: Boolean,
+        ): Boolean {
+            var emitted = false
+            return try {
+                backend.streamChat(request.routeRequest.request).collect { delta ->
+                    validateDelta(delta, request)
+                    emitted = true
+                    publish(lifecycle, InferenceEvent.Delta(delta, now()))
+                }
+                publish(lifecycle, InferenceEvent.Completed(now()))
+                true
+            } catch (failure: ModelInvocationException) {
+                if (emitted || isLast) throw failure
+                false
+            }
+        }
+
+        private fun validateDelta(delta: ChatDelta, request: InferenceExecutionRequest) {
+            if (delta is ChatDelta.ToolCall && request.routeRequest.request.toolSchemas.isEmpty()) {
+                throw ModelInvocationException.ProtocolFailure()
+            }
         }
 
         private suspend fun ProducerScope<InferenceEvent>.publish(
@@ -137,14 +166,25 @@ class DefaultInferenceOrchestrator(
         is InferenceEvent.Failed -> InferenceExecutionRecord.State.FAILED
     }
 
-    private fun Throwable.toInferenceFailure(): InferenceFailure = when (this) {
-        is ModelInvocationException.Unavailable -> InferenceFailure(InferenceFailure.Code.BACKEND_UNAVAILABLE, retryable)
-        is ModelInvocationException.NetworkUnavailable -> InferenceFailure(InferenceFailure.Code.NETWORK_UNAVAILABLE, retryable)
-        is ModelInvocationException.AuthenticationUnavailable -> InferenceFailure(InferenceFailure.Code.AUTHENTICATION_UNAVAILABLE, retryable)
-        is ModelInvocationException.Rejected -> InferenceFailure(InferenceFailure.Code.PROVIDER_REJECTED, retryable)
-        is ModelInvocationException.RateLimited -> InferenceFailure(InferenceFailure.Code.RATE_LIMITED, retryable)
-        is ModelInvocationException.ProtocolFailure -> InferenceFailure(InferenceFailure.Code.PROTOCOL_FAILURE, retryable)
-        is ModelInvocationException.ProviderFailure -> InferenceFailure(InferenceFailure.Code.PROVIDER_INTERNAL, retryable)
-        else -> InferenceFailure(InferenceFailure.Code.PROVIDER_INTERNAL, false)
+    private fun ModelInvocationException.toInferenceFailure(): InferenceFailure = when (this) {
+        is ModelInvocationException.Unavailable -> failure(InferenceFailure.Code.BACKEND_UNAVAILABLE)
+        is ModelInvocationException.NetworkUnavailable -> failure(InferenceFailure.Code.NETWORK_UNAVAILABLE)
+        is ModelInvocationException.AuthenticationUnavailable -> {
+            failure(InferenceFailure.Code.AUTHENTICATION_UNAVAILABLE)
+        }
+        is ModelInvocationException.Rejected -> failure(InferenceFailure.Code.PROVIDER_REJECTED)
+        is ModelInvocationException.RateLimited -> failure(InferenceFailure.Code.RATE_LIMITED)
+        is ModelInvocationException.ProtocolFailure -> failure(InferenceFailure.Code.PROTOCOL_FAILURE)
+        is ModelInvocationException.ProviderFailure -> failure(InferenceFailure.Code.PROVIDER_INTERNAL)
     }
+
+    private fun ModelInvocationException.failure(code: InferenceFailure.Code) =
+        InferenceFailure(code, retryable)
+
+    private fun backendUnavailable(at: Long) = InferenceEvent.Failed(
+        InferenceFailure(InferenceFailure.Code.BACKEND_UNAVAILABLE, false),
+        at,
+    )
+
+    private class BackendResolutionException : Exception()
 }

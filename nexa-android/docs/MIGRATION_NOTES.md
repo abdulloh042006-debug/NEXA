@@ -24,3 +24,7 @@ See LOCAL_SETTINGS.md for lifecycle and non-destructive error behavior.
 ## Phase 2 — kernel blackboard and model routing
 
 **No persisted-data migration required.** Blackboard entries are process-local working memory with explicit ownership and TTL, not a database. Model manifests, policies, and routing decision records are runtime contracts and add no Room, DataStore, or Wire fields.
+
+## Phase 3 — inference orchestration
+
+**No persisted-data migration required.** Execution requests, lifecycle events, sanitized failures, and diagnostics are in-process contracts. Existing conversation persistence and Room schemas are unchanged.
