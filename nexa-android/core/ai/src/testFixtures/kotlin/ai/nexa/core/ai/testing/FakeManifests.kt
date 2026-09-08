@@ -2,6 +2,7 @@ package ai.nexa.core.ai.testing
 
 import ai.nexa.core.ai.model.Language
 import ai.nexa.core.ai.model.ModelManifest
+import ai.nexa.core.ai.model.ModelProviderId
 import ai.nexa.core.ai.model.PrivacyClass
 
 /** Canonical manifests for tests — local models per port capability plus a cloud chat variant. */
@@ -39,6 +40,7 @@ object FakeManifests {
         languageScores: Map<Language, Double> = defaultLanguageScores,
     ): ModelManifest = ModelManifest(
         id = id,
+        providerId = ModelProviderId("test-cloud"),
         kind = ModelManifest.ModelKind.CLOUD,
         capabilities = capabilities,
         contextWindow = 128_000,
@@ -67,6 +69,7 @@ object FakeManifests {
         contextWindow: Int = 8_192,
     ): ModelManifest = ModelManifest(
         id = id,
+        providerId = ModelProviderId("test-local"),
         kind = ModelManifest.ModelKind.LOCAL,
         capabilities = capabilities,
         contextWindow = contextWindow,
