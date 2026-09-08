@@ -34,7 +34,7 @@ class DefaultPlanningPortTest {
             flowOf(
                 InferenceEvent.Queued(1),
                 InferenceEvent.Started("model", "provider", 2),
-                InferenceEvent.Delta(ChatDelta.Token(validProposal()), 3),
+                InferenceEvent.Delta(ChatDelta.Token(VALID_PROPOSAL), 3),
                 InferenceEvent.Completed(4),
             ),
         )
@@ -101,7 +101,7 @@ class DefaultPlanningPortTest {
         val port = DefaultPlanningPort(
             orchestrator = FakeOrchestrator(
                 flowOf(
-                    InferenceEvent.Delta(ChatDelta.Token(validProposal()), 1),
+                    InferenceEvent.Delta(ChatDelta.Token(VALID_PROPOSAL), 1),
                     InferenceEvent.Completed(2),
                 ),
             ),
@@ -148,7 +148,9 @@ class DefaultPlanningPortTest {
             RoutingDeviceState(NetworkState.UNAVAILABLE, 0, emptySet())
         }
 
-        fun validProposal() =
-            """{"schemaVersion":1,"planId":"plan-1","metadata":{"origin":"USER"},"nodes":[{"id":"open","dependsOn":[],"capabilities":["APP_LAUNCH"],"action":{"type":"OPEN_APP","packageName":"ai.nexa.app"}}]}"""
+        const val VALID_PROPOSAL =
+            "{\"schemaVersion\":1,\"planId\":\"plan-1\",\"metadata\":{\"origin\":\"USER\"},\"nodes\":[" +
+                "{\"id\":\"open\",\"dependsOn\":[],\"capabilities\":[\"APP_LAUNCH\"]," +
+                "\"action\":{\"type\":\"OPEN_APP\",\"packageName\":\"ai.nexa.app\"}}]}"
     }
 }

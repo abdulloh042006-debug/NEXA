@@ -37,7 +37,12 @@ class JsonPlanCompilerTest {
         assertRejected(UntrustedPlanProposal("{\"schemaVersion\":"), CompilationCode.MALFORMED_DOCUMENT)
         assertRejected(proposal(schema = 2), CompilationCode.UNSUPPORTED_SCHEMA)
         assertRejected(
-            UntrustedPlanProposal(proposal().content.replaceFirst("\"planId\":\"plan-1\"", "\"planId\":\"a\",\"planId\":\"b\"")),
+            UntrustedPlanProposal(
+                proposal().content.replaceFirst(
+                    "\"planId\":\"plan-1\"",
+                    "\"planId\":\"a\",\"planId\":\"b\"",
+                ),
+            ),
             CompilationCode.DUPLICATE_FIELD,
         )
         assertRejected(proposal(nodeId = "bad id"), CompilationCode.INVALID_FIELD)

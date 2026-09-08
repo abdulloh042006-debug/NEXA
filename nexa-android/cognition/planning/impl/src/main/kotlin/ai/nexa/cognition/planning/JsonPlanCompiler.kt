@@ -29,31 +29,34 @@ import javax.inject.Inject
 class JsonPlanCompiler @Inject constructor() : PlanCompiler {
     private val validator = PlanValidator()
 
-    override fun compile(proposal: UntrustedPlanProposal): PlanCompilationResult {
-        val source = proposal.content
-        if (source.isBlank()) return rejected(CompilationCode.EMPTY_PROPOSAL)
-        if (source.length > MAX_PROPOSAL_LENGTH) return rejected(CompilationCode.PROPOSAL_TOO_LARGE)
-        if (JsonDuplicateKeyDetector.containsDuplicate(source)) return rejected(CompilationCode.DUPLICATE_FIELD)
+    override fun compile(proposal: UntrustedPlanProposal): PlanCompilationResult = when {
+        proposal.content.isBlank() -> rejected(CompilationCode.EMPTY_PROPOSAL)
+        proposal.content.length > MAX_PROPOSAL_LENGTH -> rejected(CompilationCode.PROPOSAL_TOO_LARGE)
+        JsonDuplicateKeyDetector.containsDuplicate(proposal.content) -> rejected(CompilationCode.DUPLICATE_FIELD)
+        else -> compileDocument(proposal.content)
+    }
 
-        val document = try {
-            Json.parseToJsonElement(source)
-        } catch (_: RuntimeException) {
-            return rejected(CompilationCode.MALFORMED_DOCUMENT)
-        }
-        val plan = try {
-            parsePlan(document)
-        } catch (failure: ProposalException) {
-            return rejected(failure.code)
-        } catch (_: IllegalArgumentException) {
-            return rejected(CompilationCode.INVALID_FIELD)
-        }
-        return when (val result = validator.validate(plan)) {
-            is PlanValidationResult.Valid -> PlanCompilationResult.Valid(result.plan)
-            is PlanValidationResult.Invalid -> PlanCompilationResult.Rejected(
-                compilationIssues = listOf(CompilationIssue(CompilationCode.VALIDATION_FAILED)),
-                validationIssues = result.issues,
-            )
-        }
+    private fun compileDocument(source: String): PlanCompilationResult = runCatching {
+        Json.parseToJsonElement(source)
+    }.fold(
+        onSuccess = ::compileElement,
+        onFailure = { rejected(CompilationCode.MALFORMED_DOCUMENT) },
+    )
+
+    private fun compileElement(document: JsonElement): PlanCompilationResult = try {
+        validate(parsePlan(document))
+    } catch (failure: ProposalException) {
+        rejected(failure.code)
+    } catch (_: IllegalArgumentException) {
+        rejected(CompilationCode.INVALID_FIELD)
+    }
+
+    private fun validate(plan: Plan): PlanCompilationResult = when (val result = validator.validate(plan)) {
+        is PlanValidationResult.Valid -> PlanCompilationResult.Valid(result.plan)
+        is PlanValidationResult.Invalid -> PlanCompilationResult.Rejected(
+            compilationIssues = listOf(CompilationIssue(CompilationCode.VALIDATION_FAILED)),
+            validationIssues = result.issues,
+        )
     }
 
     private fun parsePlan(element: JsonElement): Plan {
@@ -115,41 +118,8 @@ class JsonPlanCompiler @Inject constructor() : PlanCompiler {
         }
     }
 
-    private fun JsonElement.strictObject(fields: Set<String>): JsonObject {
-        val value = this as? JsonObject ?: throw ProposalException(CompilationCode.INVALID_FIELD)
-        if ((value.keys - fields).isNotEmpty()) throw ProposalException(CompilationCode.UNKNOWN_FIELD)
-        return value
-    }
-
-    private fun JsonElement.strictArray(): JsonArray =
-        this as? JsonArray ?: throw ProposalException(CompilationCode.INVALID_FIELD)
-
-    private fun JsonElement.strictString(): String {
-        val primitive = this as? JsonPrimitive
-        if (primitive?.isString != true) throw ProposalException(CompilationCode.INVALID_FIELD)
-        return primitive.content
-    }
-
-    private fun JsonObject.required(name: String): JsonElement =
-        this[name] ?: throw ProposalException(CompilationCode.MISSING_FIELD)
-
-    private fun JsonObject.requiredString(name: String): String = required(name).strictString()
-
-    private fun JsonObject.optionalString(name: String): String? = this[name]?.strictString()
-
-    private fun JsonObject.requiredInt(name: String): Int =
-        required(name).jsonPrimitive.intOrNull ?: throw ProposalException(CompilationCode.INVALID_FIELD)
-
-    private fun JsonObject.requiredLong(name: String): Long =
-        required(name).jsonPrimitive.content.toLongOrNull() ?: throw ProposalException(CompilationCode.INVALID_FIELD)
-
-    private inline fun <reified T : Enum<T>> enumValue(value: String): T =
-        enumValues<T>().firstOrNull { it.name == value } ?: throw ProposalException(CompilationCode.INVALID_FIELD)
-
     private fun rejected(code: CompilationCode) =
         PlanCompilationResult.Rejected(listOf(CompilationIssue(code)))
-
-    private class ProposalException(val code: CompilationCode) : RuntimeException()
 
     private companion object {
         const val MAX_PROPOSAL_LENGTH = 65_536
@@ -163,6 +133,39 @@ class JsonPlanCompiler @Inject constructor() : PlanCompiler {
     }
 }
 
+private fun JsonElement.strictObject(fields: Set<String>): JsonObject {
+    val value = this as? JsonObject ?: throw ProposalException(CompilationCode.INVALID_FIELD)
+    if ((value.keys - fields).isNotEmpty()) throw ProposalException(CompilationCode.UNKNOWN_FIELD)
+    return value
+}
+
+private fun JsonElement.strictArray(): JsonArray =
+    this as? JsonArray ?: throw ProposalException(CompilationCode.INVALID_FIELD)
+
+private fun JsonElement.strictString(): String {
+    val primitive = this as? JsonPrimitive
+    if (primitive?.isString != true) throw ProposalException(CompilationCode.INVALID_FIELD)
+    return primitive.content
+}
+
+private fun JsonObject.required(name: String): JsonElement =
+    this[name] ?: throw ProposalException(CompilationCode.MISSING_FIELD)
+
+private fun JsonObject.requiredString(name: String): String = required(name).strictString()
+
+private fun JsonObject.optionalString(name: String): String? = this[name]?.strictString()
+
+private fun JsonObject.requiredInt(name: String): Int =
+    required(name).jsonPrimitive.intOrNull ?: throw ProposalException(CompilationCode.INVALID_FIELD)
+
+private fun JsonObject.requiredLong(name: String): Long =
+    required(name).jsonPrimitive.content.toLongOrNull() ?: throw ProposalException(CompilationCode.INVALID_FIELD)
+
+private inline fun <reified T : Enum<T>> enumValue(value: String): T =
+    enumValues<T>().firstOrNull { it.name == value } ?: throw ProposalException(CompilationCode.INVALID_FIELD)
+
+private class ProposalException(val code: CompilationCode) : RuntimeException()
+
 private object JsonDuplicateKeyDetector {
     fun containsDuplicate(source: String): Boolean {
         val objectKeys = ArrayDeque<MutableSet<String>?>()
@@ -174,16 +177,23 @@ private object JsonDuplicateKeyDetector {
                 '}', ']' -> if (objectKeys.isNotEmpty()) objectKeys.removeLast()
                 '"' -> {
                     val (value, next) = readString(source, index)
-                    val after = source.nextNonWhitespace(next)
-                    if (after < source.length && source[after] == ':' && objectKeys.lastOrNull() != null) {
-                        if (!checkNotNull(objectKeys.last()).add(value)) return true
-                    }
+                    if (isDuplicateKey(source, next, value, objectKeys.lastOrNull())) return true
                     index = next - 1
                 }
             }
             index++
         }
         return false
+    }
+
+    private fun isDuplicateKey(
+        source: String,
+        next: Int,
+        value: String,
+        keys: MutableSet<String>?,
+    ): Boolean {
+        val after = source.nextNonWhitespace(next)
+        return after < source.length && source[after] == ':' && keys != null && !keys.add(value)
     }
 
     private fun readString(source: String, start: Int): Pair<String, Int> {
