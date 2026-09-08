@@ -1,26 +1,19 @@
 package ai.nexa.router
 
-import ai.nexa.core.ai.model.ChatDelta
-import ai.nexa.core.ai.model.Embedding
 import ai.nexa.core.ai.model.LatencyBudget
 import ai.nexa.core.ai.model.ModelManifest
 import ai.nexa.core.ai.model.PrivacyClass
 import ai.nexa.core.ai.port.ChatModelPort
 import ai.nexa.core.ai.port.EmbeddingPort
-import ai.nexa.core.ai.port.ModelInvocationException
 import ai.nexa.core.ai.port.ModelPort
 import ai.nexa.router.api.CandidateDecisionRecord
 import ai.nexa.router.api.ChatRouteRequest
 import ai.nexa.router.api.EmbeddingRouteRequest
-import ai.nexa.router.api.NoEligibleModelException
 import ai.nexa.router.api.RouteDecision
 import ai.nexa.router.api.RouterPort
 import ai.nexa.router.api.RoutingDecisionObserver
 import ai.nexa.router.api.RoutingDecisionRecord
 import ai.nexa.router.api.SelectionReason
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.collect
-import kotlinx.coroutines.flow.flow
 
 /** Rule-filtered, scored routing from ARCHITECTURE §11.2. */
 class DeterministicModelRouter(
@@ -49,28 +42,6 @@ class DeterministicModelRouter(
         )
     }
 
-    override fun streamChat(request: ChatRouteRequest): Flow<ChatDelta> = flow {
-        val decision = resolveChat(request)
-        if (decision.ranked.isEmpty()) throw NoEligibleModelException(request, decision)
-
-        var lastFailure: ModelInvocationException? = null
-        decision.ranked.forEach { manifest ->
-            val model = checkNotNull(chatModels[manifest.id])
-            var emitted = false
-            try {
-                model.streamChat(request.request).collect { delta ->
-                    emitted = true
-                    emit(delta)
-                }
-                return@flow
-            } catch (failure: ModelInvocationException) {
-                if (emitted) throw failure
-                lastFailure = failure
-            }
-        }
-        throw checkNotNull(lastFailure)
-    }
-
     override suspend fun resolveEmbedding(request: EmbeddingRouteRequest): RouteDecision = resolve(
         embeddingModels.values,
         RouteContext(
@@ -84,19 +55,6 @@ class DeterministicModelRouter(
             policy = request.policy,
         ),
     )
-
-    override suspend fun routeEmbedding(
-        texts: List<String>,
-        request: EmbeddingRouteRequest,
-    ): List<Embedding> {
-        require(texts.isNotEmpty()) { "embedding input must not be empty" }
-        val decision = resolveEmbedding(request)
-        val chosen = decision.chosen ?: throw NoEligibleModelException(
-            "no embedding model is eligible for purpose=${request.purpose}",
-            decision,
-        )
-        return checkNotNull(embeddingModels[chosen.id]).embed(texts, request.purpose)
-    }
 
     private fun resolve(models: Collection<ModelPort>, context: RouteContext): RouteDecision {
         val evaluations = models.map { evaluator.evaluate(it.manifest, context) }.sortedBy { it.manifest.id }

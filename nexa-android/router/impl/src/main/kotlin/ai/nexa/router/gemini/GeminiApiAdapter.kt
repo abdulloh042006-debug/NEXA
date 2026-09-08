@@ -9,6 +9,8 @@ import ai.nexa.core.ai.port.ModelInvocationException
 import ai.nexa.core.network.inference.GeminiGatewayClient
 import ai.nexa.core.network.inference.GeminiGatewayEvent
 import ai.nexa.core.network.inference.GeminiGatewayRequest
+import ai.nexa.core.network.inference.InferenceGatewayException
+import java.io.IOException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.map
@@ -40,7 +42,7 @@ class GeminiApiAdapter(
             }
             .catch { failure ->
                 if (failure is kotlinx.coroutines.CancellationException) throw failure
-                throw ModelInvocationException.ProviderFailure(failure)
+                throw failure.toModelFailure()
             }
     }
 
@@ -64,5 +66,18 @@ class GeminiApiAdapter(
         ChatMessage.Role.USER -> "user"
         ChatMessage.Role.ASSISTANT -> "assistant"
         ChatMessage.Role.TOOL -> "tool"
+    }
+
+    private fun Throwable.toModelFailure(): ModelInvocationException = when (this) {
+        is InferenceGatewayException.Unauthorized -> ModelInvocationException.AuthenticationUnavailable()
+        is InferenceGatewayException.RateLimited -> ModelInvocationException.RateLimited()
+        is InferenceGatewayException.ProtocolFailure -> ModelInvocationException.ProtocolFailure(this)
+        is InferenceGatewayException.HttpFailure -> if (statusCode in 400..499) {
+            ModelInvocationException.Rejected()
+        } else {
+            ModelInvocationException.ProviderFailure(this)
+        }
+        is IOException -> ModelInvocationException.NetworkUnavailable(this)
+        else -> ModelInvocationException.ProviderFailure(this)
     }
 }

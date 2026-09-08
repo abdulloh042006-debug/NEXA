@@ -1,6 +1,5 @@
 package ai.nexa.router
 
-import ai.nexa.core.ai.model.ChatDelta
 import ai.nexa.core.ai.model.ChatMessage
 import ai.nexa.core.ai.model.ChatRequest
 import ai.nexa.core.ai.model.EmbeddingPurpose
@@ -10,7 +9,6 @@ import ai.nexa.core.ai.model.ModelManifest
 import ai.nexa.core.ai.model.ModelProviderId
 import ai.nexa.core.ai.model.PrivacyClass
 import ai.nexa.core.ai.model.ToolSchema
-import ai.nexa.core.ai.port.ModelInvocationException
 import ai.nexa.core.ai.testing.FakeChatModelPort
 import ai.nexa.core.ai.testing.FakeEmbeddingPort
 import ai.nexa.core.ai.testing.FakeManifests
@@ -18,13 +16,11 @@ import ai.nexa.router.api.ChatRouteRequest
 import ai.nexa.router.api.EmbeddingRouteRequest
 import ai.nexa.router.api.ExclusionReason
 import ai.nexa.router.api.NetworkState
-import ai.nexa.router.api.NoEligibleModelException
 import ai.nexa.router.api.RoutingDecisionRecord
 import ai.nexa.router.api.RoutingDeviceState
 import ai.nexa.router.api.RoutingPolicy
 import ai.nexa.router.api.RoutingWeights
 import ai.nexa.router.api.SelectionReason
-import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.test.runTest
 import org.junit.Test
 import kotlin.test.assertEquals
@@ -253,48 +249,6 @@ class DeterministicModelRouterTest {
     }
 
     @Test
-    fun `stream fails explicitly when no model is eligible`() = runTest {
-        assertFailsWith<NoEligibleModelException> {
-            router().streamChat(route()).toList()
-        }
-    }
-
-    @Test
-    fun `failure before first delta uses next eligible model`() = runTest {
-        val failingCloud = FakeChatModelPort(
-            manifest = cloud(),
-            script = { emptyList() },
-            failure = ModelInvocationException.ProviderFailure(IllegalStateException("provider unavailable")),
-        )
-        val local = FakeChatModelPort(
-            manifest = local(),
-            script = { listOf(ChatDelta.Token("local")) },
-        )
-
-        val deltas = router(failingCloud, local).streamChat(route()).toList()
-
-        assertEquals(listOf(ChatDelta.Token("local")), deltas)
-        assertEquals(1, failingCloud.recordedRequests.size)
-        assertEquals(1, local.recordedRequests.size)
-    }
-
-    @Test
-    fun `failure after a delta never silently switches models`() = runTest {
-        val failingCloud = FakeChatModelPort(
-            manifest = cloud(),
-            script = { listOf(ChatDelta.Token("partial")) },
-            failure = ModelInvocationException.ProviderFailure(IllegalStateException("stream interrupted")),
-        )
-        val local = FakeChatModelPort(manifest = local())
-
-        assertFailsWith<ModelInvocationException.ProviderFailure> {
-            router(failingCloud, local).streamChat(route()).toList()
-        }
-
-        assertTrue(local.recordedRequests.isEmpty())
-    }
-
-    @Test
     fun `embedding routing remains local and deterministic`() = runTest {
         val embedding = FakeEmbeddingPort()
         val router = DeterministicModelRouter(
@@ -306,9 +260,6 @@ class DeterministicModelRouterTest {
             deviceState = device(available = setOf(embedding.manifest.id)),
         )
 
-        val vectors = router.routeEmbedding(listOf("memory"), request)
-
-        assertEquals(1, vectors.size)
         assertEquals(embedding.manifest.id, router.resolveEmbedding(request).chosen?.id)
     }
 

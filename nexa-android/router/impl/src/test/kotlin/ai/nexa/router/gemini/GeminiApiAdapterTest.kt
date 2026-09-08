@@ -9,16 +9,21 @@ import ai.nexa.core.ai.model.ModelManifest
 import ai.nexa.core.ai.model.ModelProviderId
 import ai.nexa.core.ai.model.PrivacyClass
 import ai.nexa.core.ai.model.SamplingParams
+import ai.nexa.core.ai.port.ModelInvocationException
 import ai.nexa.core.network.inference.GeminiGatewayClient
 import ai.nexa.core.network.inference.GeminiGatewayEvent
 import ai.nexa.core.network.inference.GeminiGatewayRequest
+import ai.nexa.core.network.inference.InferenceGatewayException
+import java.io.IOException
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.test.runTest
 import org.junit.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertIs
 
 class GeminiApiAdapterTest {
     @Test
@@ -55,6 +60,19 @@ class GeminiApiAdapterTest {
         )
 
         assertFailsWith<IllegalArgumentException> { adapter.streamChat(request) }
+    }
+
+    @Test
+    fun mapsGatewayFailuresToSanitizedModelFailures() = runTest {
+        suspend fun mapped(failure: Throwable): Throwable = assertFailsWith<Throwable> {
+            GeminiApiAdapter(manifest(), RecordingClient(flow { throw failure })).streamChat(request()).toList()
+        }
+
+        assertIs<ModelInvocationException.AuthenticationUnavailable>(mapped(InferenceGatewayException.Unauthorized()))
+        assertIs<ModelInvocationException.RateLimited>(mapped(InferenceGatewayException.RateLimited()))
+        assertIs<ModelInvocationException.Rejected>(mapped(InferenceGatewayException.HttpFailure(400)))
+        assertIs<ModelInvocationException.ProtocolFailure>(mapped(InferenceGatewayException.ProtocolFailure(IllegalStateException())))
+        assertIs<ModelInvocationException.NetworkUnavailable>(mapped(IOException("offline")))
     }
 
     private fun request(privacyClass: PrivacyClass = PrivacyClass.P1_PERSONAL) = ChatRequest(
