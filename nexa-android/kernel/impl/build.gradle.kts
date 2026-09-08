@@ -11,6 +11,7 @@ dependencies {
 
     implementation(projects.core.ai)
     implementation(projects.core.data)
+    implementation(projects.router.api)
     implementation(libs.kotlinx.coroutines.core)
 
     testImplementation(libs.junit)
