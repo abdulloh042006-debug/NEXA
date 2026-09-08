@@ -1,14 +1,14 @@
 # Module Dependency Graph
 
-86 Gradle modules. Sprint 1 ships the complete skeleton (SPEC §4.2: post-V1 engines exist as day-1 seams); populated modules are marked ●.
+86 Gradle modules. The complete skeleton remains in place (SPEC §4.2: post-V1 engines exist as day-1 seams); populated modules are marked ●.
 
 ## Structure
 
 ```
 :app ●                          composition root (flavors: gms/nogms)
-:kernel:{api,impl}              cognitive kernel seam
+:kernel:{api,impl} ●            typed blackboard and chat orchestration
 :reasoning:{api,impl}           reasoning pipeline seam
-:router:{api,impl}              model router seam
+:router:{api,impl} ●            deterministic manifest-driven model router
 :cognition:{worldmodel,goal,planning,critic,reflection,learning,curiosity,preference}:{api,impl}
 :self:{identity,personality,emotion,trust,relationship,experience}:{api,impl}
 :engine:memory:{api,impl}       :engine:context:{api,impl}   :engine:automation:{api,impl}
@@ -17,7 +17,7 @@
 :engine:plugin:{api,impl}
 :core:common                    common services skeleton
 :core:proto ●                   Wire schemas (LocalSettings v1)
-:core:ai                        ModelPorts home (pure JVM)
+:core:ai ●                      model ports and validated model manifests (pure JVM)
 :core:inference-local           :inference process home (NDK later)
 :core:permission                Gatekeeper home
 :core:data ●                    typed DataStore serializer/factory; Room build wiring only
@@ -29,11 +29,17 @@
 :konsist-tests ●                architecture law (2 active rules)
 ```
 
-## Current edges (Sprint 1)
+## Current edges (Phase 2)
 
 ```mermaid
 graph TD
     APP[":app"] --> DESIGN[":core:design"]
+    APP --> KERNEL_IMPL[":kernel:impl"]
+    APP --> ROUTER_IMPL[":router:impl"]
+    KERNEL_IMPL --> ROUTER_API[":router:api"]
+    ROUTER_IMPL --> ROUTER_API
+    ROUTER_IMPL --> AI[":core:ai"]
+    ROUTER_IMPL --> NETWORK[":core:network"]
     DATA[":core:data"] --> COMMON[":core:common"]
     DATA --> PROTO[":core:proto"]
     IMPLS["every :impl module"] --> OWNAPI["its own :api"]
@@ -46,6 +52,8 @@ graph TD
 ```
 
 Type-level edges (api→common, feature→design/common, platform→permission/common, impl→own api) are wired by the convention plugins — a new module is born lawful.
+
+The `:app` composition root supplies concrete model adapters and an explicit runtime-device snapshot. The kernel sends structured intent to `RouterPort`; neither the kernel nor UI selects a provider. See [PHASE2_KERNEL_ROUTING.md](PHASE2_KERNEL_ROUTING.md).
 
 ## The law (SPEC §4.3 — Konsist-enforced, growing per ED-11)
 
