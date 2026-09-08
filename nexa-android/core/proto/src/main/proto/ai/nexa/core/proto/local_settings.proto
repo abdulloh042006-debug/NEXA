@@ -1,0 +1,11 @@
+syntax = "proto2";
+
+package ai.nexa.core.proto;
+
+// Local, non-sensitive preferences only. No credentials or business data.
+// Keep field numbers stable; reserve removed numbers and names.
+message LocalSettings {
+  // Every future field change requires a version bump and tested read migration.
+  // Wire preserves absence as null; use defaultLocalSettings() for app defaults.
+  optional uint32 schema_version = 1 [default = 1];
+}

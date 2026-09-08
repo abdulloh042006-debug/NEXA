@@ -15,14 +15,14 @@
 :engine:voice:{api,impl,whisper,tts,androidspeech}
 :engine:vision:{api,impl,ocr,screen,camera}
 :engine:plugin:{api,impl}
-:core:common ●                  dispatcher qualifiers + DI
+:core:common                    common services skeleton
 :core:proto ●                   Wire schemas (LocalSettings v1)
 :core:ai                        ModelPorts home (pure JVM)
 :core:inference-local           :inference process home (NDK later)
 :core:permission                Gatekeeper home
-:core:data ●                    Room(KSP wired) + typed DataStore ● + future crypto/vec
+:core:data ●                    typed DataStore serializer/factory; Room build wiring only
 :core:sync  :core:events  :core:background  :core:network
-:core:design ●                  tokens + NexaTheme (M3 wrapper)
+:core:design                    Compose build skeleton; theme pending
 :platform:{telephony,calendar,contacts,files,notifications,accessibility,camera,sensors,connectivity,media}
 :feature:{chat,voice-ui,overlay,memory-browser,workflows,goals,trust,timeline,onboarding,settings-privacy}
 :benchmark ●                    Macrobenchmark (cold start)

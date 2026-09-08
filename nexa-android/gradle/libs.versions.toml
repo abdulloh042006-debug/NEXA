@@ -15,15 +15,21 @@ androidxDatastore = "1.1.1"
 androidxLifecycle = "2.8.7"
 androidxNavigation = "2.8.5"
 androidxRoom = "2.6.1"
+androidxTestCore = "1.6.1"
 androidxTestExtJunit = "1.2.1"
 androidxUiautomator = "2.3.0"
 
 hilt = "2.53.1"
+hiltNavigationCompose = "1.2.0"
 javaxInject = "1"
 konsist = "0.16.1"
 kotlinxCoroutines = "1.9.0"
+kotlinxSerialization = "1.7.3"
+okhttp = "4.12.0"
 timber = "5.0.1"
 wire = "5.1.0"
+robolectric = "4.14.1"
+sqlcipher = "4.5.4"
 
 junit = "4.13.2"
 
@@ -31,6 +37,7 @@ detekt = "1.23.7"
 spotless = "6.25.0"
 
 [libraries]
+kotlin-test = { group = "org.jetbrains.kotlin", name = "kotlin-test", version.ref = "kotlin" }
 androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "androidxActivityCompose" }
 androidx-benchmark-macro-junit4 = { group = "androidx.benchmark", name = "benchmark-macro-junit4", version.ref = "androidxBenchmark" }
 androidx-compose-bom = { group = "androidx.compose", name = "compose-bom", version.ref = "androidxComposeBom" }
@@ -41,10 +48,13 @@ androidx-compose-ui-tooling-preview = { group = "androidx.compose.ui", name = "u
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "androidxCoreKtx" }
 androidx-datastore = { group = "androidx.datastore", name = "datastore", version.ref = "androidxDatastore" }
 androidx-lifecycle-runtime-compose = { group = "androidx.lifecycle", name = "lifecycle-runtime-compose", version.ref = "androidxLifecycle" }
+androidx-lifecycle-viewmodel-ktx = { group = "androidx.lifecycle", name = "lifecycle-viewmodel-ktx", version.ref = "androidxLifecycle" }
 androidx-navigation-compose = { group = "androidx.navigation", name = "navigation-compose", version.ref = "androidxNavigation" }
 androidx-room-compiler = { group = "androidx.room", name = "room-compiler", version.ref = "androidxRoom" }
 androidx-room-ktx = { group = "androidx.room", name = "room-ktx", version.ref = "androidxRoom" }
 androidx-room-runtime = { group = "androidx.room", name = "room-runtime", version.ref = "androidxRoom" }
+androidx-room-testing = { group = "androidx.room", name = "room-testing", version.ref = "androidxRoom" }
+androidx-test-core = { group = "androidx.test", name = "core", version.ref = "androidxTestCore" }
 androidx-test-ext-junit = { group = "androidx.test.ext", name = "junit", version.ref = "androidxTestExtJunit" }
 androidx-test-uiautomator = { group = "androidx.test.uiautomator", name = "uiautomator", version.ref = "androidxUiautomator" }
 
@@ -52,6 +62,7 @@ detekt-formatting = { group = "io.gitlab.arturbosch.detekt", name = "detekt-form
 
 hilt-android = { group = "com.google.dagger", name = "hilt-android", version.ref = "hilt" }
 hilt-compiler = { group = "com.google.dagger", name = "hilt-android-compiler", version.ref = "hilt" }
+hilt-navigation-compose = { group = "androidx.hilt", name = "hilt-navigation-compose", version.ref = "hiltNavigationCompose" }
 
 javax-inject = { group = "javax.inject", name = "javax.inject", version.ref = "javaxInject" }
 
@@ -60,8 +71,15 @@ konsist = { group = "com.lemonappdev", name = "konsist", version.ref = "konsist"
 kotlinx-coroutines-android = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-android", version.ref = "kotlinxCoroutines" }
 kotlinx-coroutines-core = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-core", version.ref = "kotlinxCoroutines" }
 kotlinx-coroutines-test = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-test", version.ref = "kotlinxCoroutines" }
+kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version.ref = "kotlinxSerialization" }
+
+okhttp = { group = "com.squareup.okhttp3", name = "okhttp", version.ref = "okhttp" }
+okhttp-mockwebserver = { group = "com.squareup.okhttp3", name = "mockwebserver", version.ref = "okhttp" }
 
 timber = { group = "com.jakewharton.timber", name = "timber", version.ref = "timber" }
+
+robolectric = { group = "org.robolectric", name = "robolectric", version.ref = "robolectric" }
+sqlcipher-android = { group = "net.zetetic", name = "android-database-sqlcipher", version.ref = "sqlcipher" }
 
 wire-runtime = { group = "com.squareup.wire", name = "wire-runtime", version.ref = "wire" }
 
@@ -81,6 +99,7 @@ detekt = { id = "io.gitlab.arturbosch.detekt", version.ref = "detekt" }
 hilt = { id = "com.google.dagger.hilt.android", version.ref = "hilt" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
+kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 spotless = { id = "com.diffplug.spotless", version.ref = "spotless" }
