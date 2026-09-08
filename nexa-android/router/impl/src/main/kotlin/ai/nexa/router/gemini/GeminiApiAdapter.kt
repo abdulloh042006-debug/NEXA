@@ -5,10 +5,12 @@ import ai.nexa.core.ai.model.ChatMessage
 import ai.nexa.core.ai.model.ChatRequest
 import ai.nexa.core.ai.model.ModelManifest
 import ai.nexa.core.ai.port.ChatModelPort
+import ai.nexa.core.ai.port.ModelInvocationException
 import ai.nexa.core.network.inference.GeminiGatewayClient
 import ai.nexa.core.network.inference.GeminiGatewayEvent
 import ai.nexa.core.network.inference.GeminiGatewayRequest
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.map
 
 /**
@@ -29,12 +31,17 @@ class GeminiApiAdapter(
     override fun streamChat(request: ChatRequest): Flow<ChatDelta> {
         require(request.toolSchemas.isEmpty()) { "Phase 1 Gemini adapter does not support tool calls" }
         require(manifest.mayReceive(request.privacyClass)) { "Request exceeds Gemini manifest privacy clearance" }
-        return gatewayClient.stream(request.toGatewayRequest(), request.latencyBudget.budgetMs).map { event ->
-            when (event) {
-                is GeminiGatewayEvent.Token -> ChatDelta.Token(event.text)
-                is GeminiGatewayEvent.Usage -> ChatDelta.Usage(event.inputTokens, event.outputTokens)
+        return gatewayClient.stream(request.toGatewayRequest(), request.latencyBudget.budgetMs)
+            .map { event ->
+                when (event) {
+                    is GeminiGatewayEvent.Token -> ChatDelta.Token(event.text)
+                    is GeminiGatewayEvent.Usage -> ChatDelta.Usage(event.inputTokens, event.outputTokens)
+                }
             }
-        }
+            .catch { failure ->
+                if (failure is kotlinx.coroutines.CancellationException) throw failure
+                throw ModelInvocationException.ProviderFailure(failure)
+            }
     }
 
     private fun ChatRequest.toGatewayRequest() = GeminiGatewayRequest(

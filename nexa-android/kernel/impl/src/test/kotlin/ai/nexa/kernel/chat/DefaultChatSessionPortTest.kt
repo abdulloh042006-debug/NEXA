@@ -1,9 +1,17 @@
 package ai.nexa.kernel.chat
 
 import ai.nexa.core.ai.model.ChatDelta
+import ai.nexa.core.ai.model.Embedding
 import ai.nexa.core.ai.testing.FakeChatModelPort
 import ai.nexa.core.data.conversation.ConversationStore
 import ai.nexa.core.data.conversation.StoredMessage
+import ai.nexa.router.api.ChatRouteRequest
+import ai.nexa.router.api.EmbeddingRouteRequest
+import ai.nexa.router.api.NetworkState
+import ai.nexa.router.api.RouteDecision
+import ai.nexa.router.api.RouterPort
+import ai.nexa.router.api.RoutingDeviceState
+import ai.nexa.router.api.RoutingEnvironmentPort
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.toList
@@ -19,7 +27,8 @@ class DefaultChatSessionPortTest {
         val model = FakeChatModelPort(
             script = { listOf(ChatDelta.Token("Javob"), ChatDelta.Usage(1, 1)) },
         )
-        val session = DefaultChatSessionPort(store, model)
+        val router = RecordingRouter(model)
+        val session = DefaultChatSessionPort(store, router, TEST_ENVIRONMENT)
         val conversationId = session.createConversation()
 
         val events = session.sendMessage(conversationId, "  Salom  ").toList()
@@ -29,6 +38,8 @@ class DefaultChatSessionPortTest {
             events,
         )
         assertEquals(listOf("Salom", "Javob"), store.messages.value.map(StoredMessage::content))
+        assertEquals(TEST_DEVICE_STATE, router.lastRequest?.deviceState)
+        assertEquals(2, router.lastRequest?.estimatedInputTokens)
     }
 
     @Test
@@ -36,7 +47,8 @@ class DefaultChatSessionPortTest {
         val store = InMemoryStore()
         val session = DefaultChatSessionPort(
             store,
-            FakeChatModelPort(failure = IllegalStateException("offline")),
+            RecordingRouter(FakeChatModelPort(failure = IllegalStateException("offline"))),
+            TEST_ENVIRONMENT,
         )
         val conversationId = session.createConversation()
 
@@ -45,6 +57,26 @@ class DefaultChatSessionPortTest {
         }
 
         assertEquals(listOf("Salom"), store.messages.value.map(StoredMessage::content))
+    }
+
+    private class RecordingRouter(
+        private val model: FakeChatModelPort,
+    ) : RouterPort {
+        var lastRequest: ChatRouteRequest? = null
+
+        override suspend fun resolveChat(request: ChatRouteRequest): RouteDecision = error("not used")
+
+        override fun streamChat(request: ChatRouteRequest): Flow<ChatDelta> {
+            lastRequest = request
+            return model.streamChat(request.request)
+        }
+
+        override suspend fun resolveEmbedding(request: EmbeddingRouteRequest): RouteDecision = error("not used")
+
+        override suspend fun routeEmbedding(
+            texts: List<String>,
+            request: EmbeddingRouteRequest,
+        ): List<Embedding> = error("not used")
     }
 
     private class InMemoryStore : ConversationStore {
@@ -69,5 +101,14 @@ class DefaultChatSessionPortTest {
                 createdAtEpochMillis = createdAtEpochMillis,
             )
         }
+    }
+
+    private companion object {
+        val TEST_DEVICE_STATE = RoutingDeviceState(
+            network = NetworkState.UNMETERED,
+            availableRamMb = 4_096,
+            availableOnDeviceModelIds = emptySet(),
+        )
+        val TEST_ENVIRONMENT = RoutingEnvironmentPort { TEST_DEVICE_STATE }
     }
 }

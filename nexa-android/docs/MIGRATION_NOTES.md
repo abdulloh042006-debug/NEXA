@@ -20,3 +20,7 @@ field handling is the v1 default, not a historical migration. Version 0 and futu
 versions are never silently rewritten. Unknown fields are retained. Future field
 changes must bump the version and add a tested read-path migration before release.
 See LOCAL_SETTINGS.md for lifecycle and non-destructive error behavior.
+
+## Phase 2 — kernel blackboard and model routing
+
+**No persisted-data migration required.** Blackboard entries are process-local working memory with explicit ownership and TTL, not a database. Model manifests, policies, and routing decision records are runtime contracts and add no Room, DataStore, or Wire fields.

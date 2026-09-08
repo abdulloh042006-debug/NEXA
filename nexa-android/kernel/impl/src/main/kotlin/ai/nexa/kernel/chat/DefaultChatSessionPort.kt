@@ -5,9 +5,11 @@ import ai.nexa.core.ai.model.ChatMessage
 import ai.nexa.core.ai.model.ChatRequest
 import ai.nexa.core.ai.model.LatencyBudget
 import ai.nexa.core.ai.model.PrivacyClass
-import ai.nexa.core.ai.port.ChatModelPort
 import ai.nexa.core.data.conversation.ConversationStore
 import ai.nexa.core.data.conversation.StoredMessage
+import ai.nexa.router.api.ChatRouteRequest
+import ai.nexa.router.api.RouterPort
+import ai.nexa.router.api.RoutingEnvironmentPort
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.flow
@@ -16,7 +18,8 @@ import javax.inject.Inject
 
 class DefaultChatSessionPort @Inject constructor(
     private val conversationStore: ConversationStore,
-    private val chatModel: ChatModelPort,
+    private val router: RouterPort,
+    private val routingEnvironment: RoutingEnvironmentPort,
 ) : ChatSessionPort {
     override suspend fun createConversation(): String {
         return conversationStore.createConversation(System.currentTimeMillis())
@@ -34,11 +37,16 @@ class DefaultChatSessionPort @Inject constructor(
 
         val history = conversationStore.listMessages(conversationId)
         val reply = StringBuilder()
-        chatModel.streamChat(
-            ChatRequest(
-                messages = history.map { it.toModelMessage() },
-                privacyClass = PrivacyClass.P2_SENSITIVE,
-                latencyBudget = LatencyBudget.INTERACTIVE,
+        val request = ChatRequest(
+            messages = history.map { it.toModelMessage() },
+            privacyClass = PrivacyClass.P2_SENSITIVE,
+            latencyBudget = LatencyBudget.INTERACTIVE,
+        )
+        router.streamChat(
+            ChatRouteRequest(
+                request = request,
+                estimatedInputTokens = request.estimateInputTokens(),
+                deviceState = routingEnvironment.currentDeviceState(),
             ),
         ).collect { delta ->
             when (delta) {
@@ -82,4 +90,14 @@ class DefaultChatSessionPort @Inject constructor(
         },
         content = content,
     )
+
+    private fun ChatRequest.estimateInputTokens(): Int =
+        messages.sumOf { it.content.length }
+            .plus(CHARACTERS_PER_ESTIMATED_TOKEN - 1)
+            .div(CHARACTERS_PER_ESTIMATED_TOKEN)
+            .coerceAtLeast(1)
+
+    private companion object {
+        const val CHARACTERS_PER_ESTIMATED_TOKEN = 4
+    }
 }

@@ -1,7 +1,5 @@
 package ai.nexa.router.api
 
-import ai.nexa.core.ai.model.ChatRequest
-
 /**
  * Failure of [RouterPort.streamChat] or [RouterPort.routeEmbedding] when no
  * registered model survives the hard filters (e.g. a P2_SENSITIVE request
@@ -15,9 +13,9 @@ class NoEligibleModelException(
 ) : IllegalStateException(
     "$message; excluded: " + decision.excluded.entries.joinToString { "${it.key} -> ${it.value}" },
 ) {
-    constructor(request: ChatRequest, decision: RouteDecision) : this(
-        "no model is eligible for privacyClass=${request.privacyClass}, " +
-            "latencyBudget=${request.latencyBudget}",
+    constructor(request: ChatRouteRequest, decision: RouteDecision) : this(
+        "no model is eligible for privacyClass=${request.request.privacyClass}, " +
+            "latencyBudget=${request.request.latencyBudget}",
         decision,
     )
 }

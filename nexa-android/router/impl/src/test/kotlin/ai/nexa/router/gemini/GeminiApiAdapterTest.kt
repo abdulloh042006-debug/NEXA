@@ -6,6 +6,7 @@ import ai.nexa.core.ai.model.ChatRequest
 import ai.nexa.core.ai.model.Language
 import ai.nexa.core.ai.model.LatencyBudget
 import ai.nexa.core.ai.model.ModelManifest
+import ai.nexa.core.ai.model.ModelProviderId
 import ai.nexa.core.ai.model.PrivacyClass
 import ai.nexa.core.ai.model.SamplingParams
 import ai.nexa.core.network.inference.GeminiGatewayClient
@@ -66,6 +67,7 @@ class GeminiApiAdapterTest {
 
     private fun manifest(privacyFloor: PrivacyClass = PrivacyClass.P1_PERSONAL) = ModelManifest(
         id = "gemini@test",
+        providerId = ModelProviderId("google"),
         kind = ModelManifest.ModelKind.CLOUD,
         capabilities = setOf(ModelManifest.ModelCapability.CHAT),
         contextWindow = 1_000,
