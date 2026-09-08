@@ -8,4 +8,9 @@ android {
 
 dependencies {
     api(project(":cognition:planning:api"))
+
+    implementation(libs.kotlinx.serialization.json)
+
+    testImplementation(libs.junit)
+    testImplementation(libs.kotlin.test)
 }
