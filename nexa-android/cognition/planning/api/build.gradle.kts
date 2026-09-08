@@ -8,6 +8,7 @@ android {
 
 dependencies {
     api(projects.core.permission)
+    api(projects.kernel.api)
 
     testImplementation(libs.junit)
     testImplementation(libs.kotlin.test)
