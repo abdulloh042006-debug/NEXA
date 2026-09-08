@@ -1,7 +1,7 @@
 package ai.nexa.feature.chat
 
-import ai.nexa.kernel.chat.ChatSendEvent
 import ai.nexa.kernel.chat.ChatFailure
+import ai.nexa.kernel.chat.ChatSendEvent
 import ai.nexa.kernel.chat.ChatSessionPort
 import ai.nexa.kernel.chat.ChatTurn
 import kotlinx.coroutines.Dispatchers
