@@ -38,6 +38,7 @@ dependencies {
     implementation(projects.core.data)
     implementation(projects.core.design)
     implementation(projects.core.network)
+    implementation(projects.core.permission)
     implementation(projects.feature.chat)
     implementation(projects.kernel.impl)
 

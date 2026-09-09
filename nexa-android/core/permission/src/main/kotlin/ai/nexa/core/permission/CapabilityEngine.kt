@@ -1,10 +1,6 @@
 package ai.nexa.core.permission
 
-import javax.inject.Inject
-import javax.inject.Singleton
-
-@Singleton
-class CapabilityEngine @Inject constructor(
+class CapabilityEngine(
     private val grantStore: GrantStore,
     private val runtimePermissions: RuntimePermissionStatePort,
     private val clock: AuthorizationClock,
