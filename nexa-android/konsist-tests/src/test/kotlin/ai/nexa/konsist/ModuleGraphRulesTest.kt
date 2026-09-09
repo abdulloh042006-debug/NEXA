@@ -45,4 +45,33 @@ class ModuleGraphRulesTest {
                 }
             }
     }
+
+    /** Plans remain inert data: planning code has no actuator or Android execution dependency. */
+    @Test
+    fun `planning cannot depend on action executors or Android APIs`() {
+        Konsist
+            .scopeFromProject()
+            .files
+            .filter { file -> file.path.replace('\\', '/').contains("/cognition/planning/") }
+            .assertFalse(testName = "planning-has-no-actuators") { file ->
+                file.hasImport { import ->
+                    import.name.startsWith("android.") ||
+                        import.name.startsWith("androidx.") ||
+                        import.name.startsWith("ai.nexa.engine.automation") ||
+                        import.name.startsWith("ai.nexa.platform")
+                }
+            }
+    }
+
+    /** Probabilistic provider adapters cannot construct or bypass validated plans. */
+    @Test
+    fun `router and provider code cannot depend on planning`() {
+        Konsist
+            .scopeFromProject()
+            .files
+            .filter { file -> file.packagee?.name.orEmpty().startsWith("ai.nexa.router") }
+            .assertFalse(testName = "providers-cannot-create-plans") { file ->
+                file.hasImport { import -> import.name.startsWith("ai.nexa.cognition.planning") }
+            }
+    }
 }

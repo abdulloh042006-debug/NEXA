@@ -5,3 +5,8 @@ plugins {
 android {
     namespace = "ai.nexa.core.permission"
 }
+
+dependencies {
+    testImplementation(libs.junit)
+    testImplementation(libs.kotlin.test)
+}

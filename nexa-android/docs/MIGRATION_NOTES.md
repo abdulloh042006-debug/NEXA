@@ -28,3 +28,7 @@ See LOCAL_SETTINGS.md for lifecycle and non-destructive error behavior.
 ## Phase 3 — inference orchestration
 
 **No persisted-data migration required.** Execution requests, lifecycle events, sanitized failures, and diagnostics are in-process contracts. Existing conversation persistence and Room schemas are unchanged.
+
+## Phase 4 — plans as data
+
+**No persisted-data migration required.** Typed proposals, validation results, dry-run inspection, and capability requirements are immutable in-process contracts. Phase 4 does not persist plans, grants, or execution state and does not change Room, DataStore, or Wire schemas.
