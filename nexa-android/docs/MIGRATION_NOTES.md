@@ -32,3 +32,7 @@ See LOCAL_SETTINGS.md for lifecycle and non-destructive error behavior.
 ## Phase 4 — plans as data
 
 **No persisted-data migration required.** Typed proposals, validation results, dry-run inspection, and capability requirements are immutable in-process contracts. Phase 4 does not persist plans, grants, or execution state and does not change Room, DataStore, or Wire schemas.
+
+## Phase 5 — permission and capability engine
+
+**No persisted-data migration required.** Phase 5 uses an in-memory session grant store behind a stable `GrantStore` port. Capability grants, authorization decisions, snapshots, and audit records are not persisted. Room, DataStore, Wire, and exported Room schemas are unchanged. A later persistent adapter must use protected storage and ship a tested non-destructive migration before release.

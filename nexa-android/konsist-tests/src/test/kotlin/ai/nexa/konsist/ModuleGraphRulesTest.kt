@@ -74,4 +74,53 @@ class ModuleGraphRulesTest {
                 file.hasImport { import -> import.name.startsWith("ai.nexa.cognition.planning") }
             }
     }
+
+    /** Capability authority cannot be minted by planning, model/provider, or feature production code. */
+    @Test
+    fun `only permission core owns grants and authorization policy`() {
+        Konsist
+            .scopeFromProject()
+            .files
+            .filter { file ->
+                val path = file.path.replace('\\', '/')
+                path.contains("/src/main/") && AUTHORITY_CONSUMER_PATHS.any(path::contains)
+            }
+            .assertFalse(testName = "permission-core-is-authority") { file ->
+                file.hasImport { import ->
+                    import.name in FORBIDDEN_AUTHORITY_IMPORTS
+                }
+            }
+    }
+
+    /** Phase 5 is deterministic domain policy and has no Android or actuator dependency. */
+    @Test
+    fun `permission policy contains no Android actions or automation executor`() {
+        Konsist
+            .scopeFromProject()
+            .files
+            .filter { file -> file.path.replace('\\', '/').contains("/core/permission/src/main/") }
+            .assertFalse(testName = "permission-policy-has-no-actuators") { file ->
+                file.hasImport { import ->
+                    import.name.startsWith("android.") ||
+                        import.name.startsWith("androidx.") ||
+                        import.name.startsWith("ai.nexa.engine.automation") ||
+                        import.name.startsWith("ai.nexa.platform")
+                }
+            }
+    }
+
+    private companion object {
+        val FORBIDDEN_AUTHORITY_IMPORTS = setOf(
+            "ai.nexa.core.permission.CapabilityGrant",
+            "ai.nexa.core.permission.ConsentProvenance",
+            "ai.nexa.core.permission.GrantStore",
+            "ai.nexa.core.permission.InMemoryGrantStore",
+        )
+        val AUTHORITY_CONSUMER_PATHS = setOf(
+            "/cognition/planning/",
+            "/router/",
+            "/core/ai/",
+            "/feature/",
+        )
+    }
 }

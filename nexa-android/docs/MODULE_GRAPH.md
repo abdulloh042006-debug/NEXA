@@ -20,7 +20,7 @@
 :core:proto ●                   Wire schemas (LocalSettings v1)
 :core:ai ●                      model ports and validated model manifests (pure JVM)
 :core:inference-local           :inference process home (NDK later)
-:core:permission ●              capability requirement contracts; Gatekeeper remains Phase 5
+:core:permission ●              authoritative capability policy, scoped grants, consent, audit
 :core:data ●                    typed DataStore serializer/factory; Room build wiring only
 :core:sync  :core:events  :core:background  :core:network
 :core:design                    Compose build skeleton; theme pending
@@ -57,6 +57,8 @@ Type-level edges (api→common, feature→design/common, platform→permission/c
 The `:app` composition root supplies a typed backend registry and an explicit runtime-device snapshot. The kernel orchestrator asks `RouterPort` for a deterministic ranked decision, resolves the selected adapter from that registry, and owns streaming lifecycle. Neither the UI nor router executes provider-specific logic. See [PHASE2_KERNEL_ROUTING.md](PHASE2_KERNEL_ROUTING.md) and [PHASE3_INFERENCE_ORCHESTRATION.md](PHASE3_INFERENCE_ORCHESTRATION.md).
 
 The Planning Engine owns typed inert plan data. Its implementation uses the kernel inference port, strictly compiles untrusted model output, validates the bounded DAG, and stops at `ValidatedPlan`. It has no Automation Engine or Android actuator dependency. See [PHASE4_PLANS_AS_DATA.md](PHASE4_PLANS_AS_DATA.md).
+
+The Permission Engine in `:core:permission` is the default-deny authorization choke point. It owns typed grants, deterministic matching, revocation, expiry, Android-prerequisite state, and privacy-safe audit records. `:cognition:planning` aggregates its decisions per validated plan and stops before execution. See [PHASE5_PERMISSION_CAPABILITY_ENGINE.md](PHASE5_PERMISSION_CAPABILITY_ENGINE.md).
 
 ## The law (SPEC §4.3 — Konsist-enforced, growing per ED-11)
 
