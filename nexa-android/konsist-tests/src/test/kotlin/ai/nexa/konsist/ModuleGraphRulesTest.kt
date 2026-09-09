@@ -83,11 +83,7 @@ class ModuleGraphRulesTest {
             .files
             .filter { file ->
                 val path = file.path.replace('\\', '/')
-                path.contains("/src/main/") &&
-                    (path.contains("/cognition/planning/") ||
-                        path.contains("/router/") ||
-                        path.contains("/core/ai/") ||
-                        path.contains("/feature/"))
+                path.contains("/src/main/") && AUTHORITY_CONSUMER_PATHS.any(path::contains)
             }
             .assertFalse(testName = "permission-core-is-authority") { file ->
                 file.hasImport { import ->
@@ -119,6 +115,12 @@ class ModuleGraphRulesTest {
             "ai.nexa.core.permission.ConsentProvenance",
             "ai.nexa.core.permission.GrantStore",
             "ai.nexa.core.permission.InMemoryGrantStore",
+        )
+        val AUTHORITY_CONSUMER_PATHS = setOf(
+            "/cognition/planning/",
+            "/router/",
+            "/core/ai/",
+            "/feature/",
         )
     }
 }
