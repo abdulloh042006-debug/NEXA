@@ -102,8 +102,16 @@ class DefaultPlanAuthorizationPortTest {
     }
 
     private fun validated(vararg nodes: PlanNode) =
-        (PlanValidator().validate(Plan(PlanId("plan-1"), PlanVersion.CURRENT, PlanMetadata(PlanOrigin.USER), nodes.toList()))
-            as PlanValidationResult.Valid).plan
+        (
+            PlanValidator().validate(
+                Plan(
+                    PlanId("plan-1"),
+                    PlanVersion.CURRENT,
+                    PlanMetadata(PlanOrigin.USER),
+                    nodes.toList(),
+                ),
+            ) as PlanValidationResult.Valid
+            ).plan
 
     private fun node(id: String, action: ActionIntent, vararg dependencies: String) = PlanNode(
         PlanNodeId(id),

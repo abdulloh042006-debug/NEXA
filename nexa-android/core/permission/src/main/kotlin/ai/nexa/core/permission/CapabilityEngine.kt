@@ -30,29 +30,34 @@ class CapabilityEngine(
         requirement: CapabilityRequirement,
         context: AuthorizationContext,
         now: Long,
-    ): AuthorizationDecision {
-        if (!requirement.isValid()) return deny(requirement, AuthorizationReason.INVALID_REQUIREMENT, now)
-        if (requirement.capability in prohibitedCapabilities) {
-            return deny(requirement, AuthorizationReason.POLICY_DENIED, now)
+    ): AuthorizationDecision = when {
+        !requirement.isValid() -> deny(requirement, AuthorizationReason.INVALID_REQUIREMENT, now)
+        requirement.capability in prohibitedCapabilities -> {
+            deny(requirement, AuthorizationReason.POLICY_DENIED, now)
         }
-        val capabilityGrants = grantStore.grantsFor(requirement.capability)
-        if (capabilityGrants.isEmpty()) return missingGrant(requirement, now)
-        val targeted = capabilityGrants.filter { it.target == requirement.target }
-        if (targeted.isEmpty()) return deny(requirement, AuthorizationReason.TARGET_MISMATCH, now)
-        val scoped = targeted.filter { it.scope.matches(requirement.requestedScope, context) }
-        if (scoped.isEmpty()) return deny(requirement, AuthorizationReason.SCOPE_MISMATCH, now)
-        val active = scoped.filterNot { it.isRevoked(now) || it.isExpired(now) }
-        if (active.isEmpty()) {
-            val reason = if (scoped.any { it.isRevoked(now) }) {
-                AuthorizationReason.REVOKED_GRANT
-            } else {
-                AuthorizationReason.EXPIRED_GRANT
-            }
-            return deny(requirement, reason, now)
-        }
-        val grant = active.minBy { it.id }
-        return checkRuntimePrerequisite(requirement, grant, now)
+        else -> evaluateGrants(requirement, context, now)
     }
+
+    private fun evaluateGrants(
+        requirement: CapabilityRequirement,
+        context: AuthorizationContext,
+        now: Long,
+    ): AuthorizationDecision {
+        val capabilityGrants = grantStore.grantsFor(requirement.capability)
+        val targeted = capabilityGrants.filter { it.target == requirement.target }
+        val scoped = targeted.filter { it.scope.matches(requirement.requestedScope, context) }
+        val active = scoped.filterNot { it.isRevoked(now) || it.isExpired(now) }
+        return when {
+            capabilityGrants.isEmpty() -> missingGrant(requirement, now)
+            targeted.isEmpty() -> deny(requirement, AuthorizationReason.TARGET_MISMATCH, now)
+            scoped.isEmpty() -> deny(requirement, AuthorizationReason.SCOPE_MISMATCH, now)
+            active.isEmpty() -> deny(requirement, inactiveReason(scoped, now), now)
+            else -> checkRuntimePrerequisite(requirement, active.minBy { it.id }, now)
+        }
+    }
+
+    private fun inactiveReason(grants: List<CapabilityGrant>, now: Long): AuthorizationReason =
+        if (grants.any { it.isRevoked(now) }) AuthorizationReason.REVOKED_GRANT else AuthorizationReason.EXPIRED_GRANT
 
     private fun checkRuntimePrerequisite(
         requirement: CapabilityRequirement,
@@ -63,8 +68,10 @@ class CapabilityEngine(
         if (prerequisite == RuntimePermissionPrerequisite.NONE) return allow(requirement, grant.id, now)
         return when (runtimePermissions.state(prerequisite)) {
             RuntimePermissionState.GRANTED -> allow(requirement, grant.id, now)
-            RuntimePermissionState.DENIED -> deny(requirement, AuthorizationReason.ANDROID_PERMISSION_MISSING, now)
-            RuntimePermissionState.UNAVAILABLE -> deny(requirement, AuthorizationReason.RUNTIME_CONTEXT_UNAVAILABLE, now)
+            RuntimePermissionState.DENIED ->
+                deny(requirement, AuthorizationReason.ANDROID_PERMISSION_MISSING, now)
+            RuntimePermissionState.UNAVAILABLE ->
+                deny(requirement, AuthorizationReason.RUNTIME_CONTEXT_UNAVAILABLE, now)
         }
     }
 
@@ -97,9 +104,14 @@ class CapabilityEngine(
             decidedAtEpochMillis = now,
         )
 
-    private fun GrantScope.matches(requested: RequestedGrantScope, context: AuthorizationContext): Boolean = when (this) {
-        is GrantScope.Once -> requested == RequestedGrantScope.ONCE && authorizationRequestId == context.authorizationRequestId
-        is GrantScope.Session -> requested != RequestedGrantScope.TIME_BOUNDED && sessionId == context.sessionId
+    private fun GrantScope.matches(
+        requested: RequestedGrantScope,
+        context: AuthorizationContext,
+    ): Boolean = when (this) {
+        is GrantScope.Once ->
+            requested == RequestedGrantScope.ONCE && authorizationRequestId == context.authorizationRequestId
+        is GrantScope.Session ->
+            requested != RequestedGrantScope.TIME_BOUNDED && sessionId == context.sessionId
         GrantScope.TimeBounded -> true
     }
 }

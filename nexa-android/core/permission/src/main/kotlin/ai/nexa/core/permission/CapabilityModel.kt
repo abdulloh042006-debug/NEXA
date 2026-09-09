@@ -89,13 +89,21 @@ data class CapabilityRequirement(
         APP_LAUNCH(
             CapabilityId("app.launch"),
             CapabilityTargetKind.APPLICATION,
-            CapabilityMetadata(CapabilityRiskClass.LOW, ConsentMode.GRANT_REQUIRED, RuntimePermissionPrerequisite.NONE),
+            CapabilityMetadata(
+                CapabilityRiskClass.LOW,
+                ConsentMode.GRANT_REQUIRED,
+                RuntimePermissionPrerequisite.NONE,
+            ),
             CapabilityTarget.Application("ai.nexa.unknown"),
         ),
         EXTERNAL_URL_OPEN(
             CapabilityId("url.open.external"),
             CapabilityTargetKind.WEB_ORIGIN,
-            CapabilityMetadata(CapabilityRiskClass.MODERATE, ConsentMode.GRANT_REQUIRED, RuntimePermissionPrerequisite.NONE),
+            CapabilityMetadata(
+                CapabilityRiskClass.MODERATE,
+                ConsentMode.GRANT_REQUIRED,
+                RuntimePermissionPrerequisite.NONE,
+            ),
             CapabilityTarget.WebOrigin("https", "invalid.local"),
         ),
         REMINDER_CREATE(
@@ -111,7 +119,11 @@ data class CapabilityRequirement(
         MESSAGE_DRAFT(
             CapabilityId("message.draft"),
             CapabilityTargetKind.RECIPIENT_REFERENCE,
-            CapabilityMetadata(CapabilityRiskClass.SENSITIVE, ConsentMode.EXPLICIT_EACH_TIME, RuntimePermissionPrerequisite.NONE),
+            CapabilityMetadata(
+                CapabilityRiskClass.SENSITIVE,
+                ConsentMode.EXPLICIT_EACH_TIME,
+                RuntimePermissionPrerequisite.NONE,
+            ),
             CapabilityTarget.RecipientReference("unknown"),
         ),
     }
