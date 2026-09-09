@@ -1,8 +1,10 @@
 package ai.nexa.cognition.planning.di
 
-import ai.nexa.cognition.planning.DefaultPlanningPort
+import ai.nexa.cognition.planning.DefaultPermissionedPlanningPort
 import ai.nexa.cognition.planning.DefaultPlanAuthorizationPort
+import ai.nexa.cognition.planning.DefaultPlanningPort
 import ai.nexa.cognition.planning.JsonPlanCompiler
+import ai.nexa.cognition.planning.api.PermissionedPlanningPort
 import ai.nexa.cognition.planning.api.PlanAuthorizationPort
 import ai.nexa.cognition.planning.api.PlanCompiler
 import ai.nexa.cognition.planning.api.PlanningPort
@@ -18,6 +20,9 @@ import javax.inject.Singleton
 @Module
 @InstallIn(SingletonComponent::class)
 abstract class PlanningModule {
+    @Binds
+    abstract fun bindPermissionedPlanningPort(implementation: DefaultPermissionedPlanningPort): PermissionedPlanningPort
+
     @Binds
     abstract fun bindPlanAuthorizationPort(implementation: DefaultPlanAuthorizationPort): PlanAuthorizationPort
 
