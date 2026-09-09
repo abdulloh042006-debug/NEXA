@@ -81,12 +81,15 @@ class JsonPlanCompiler @Inject constructor() : PlanCompiler {
     private fun parseNode(element: JsonElement): PlanNode {
         val node = element.strictObject(NODE_FIELDS)
         val dependencies = node.required("dependsOn").strictArray().map { PlanNodeId(it.strictString()) }
+        val action = parseAction(node.required("action"))
+        val expected = action.requiredCapabilities.single()
         val capabilities = node.required("capabilities").strictArray().map {
-            CapabilityRequirement(enumValue(it.strictString()))
+            val capability = enumValue<CapabilityRequirement.Capability>(it.strictString())
+            CapabilityRequirement(capability, expected.target)
         }
         return PlanNode(
             id = PlanNodeId(node.requiredString("id")),
-            action = parseAction(node.required("action")),
+            action = action,
             dependencies = dependencies,
             declaredCapabilities = capabilities,
         )

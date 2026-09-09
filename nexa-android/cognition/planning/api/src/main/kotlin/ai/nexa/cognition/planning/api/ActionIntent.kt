@@ -1,6 +1,7 @@
 package ai.nexa.cognition.planning.api
 
 import ai.nexa.core.permission.CapabilityRequirement
+import ai.nexa.core.permission.CapabilityTarget
 import java.net.URI
 
 /** Closed data-only proposal. No member can execute an Android or system action. */
@@ -12,7 +13,10 @@ sealed interface ActionIntent {
             require(packageName.matches(PACKAGE_NAME)) { "invalid application package name" }
         }
 
-        override val requiredCapabilities = capability(CapabilityRequirement.Capability.APP_LAUNCH)
+        override val requiredCapabilities = capability(
+            CapabilityRequirement.Capability.APP_LAUNCH,
+            CapabilityTarget.Application(packageName),
+        )
     }
 
     data class OpenUrl(val url: String) : ActionIntent {
@@ -26,7 +30,10 @@ sealed interface ActionIntent {
             ) { "URL must be an absolute http(s) target without user information" }
         }
 
-        override val requiredCapabilities = capability(CapabilityRequirement.Capability.EXTERNAL_URL_OPEN)
+        override val requiredCapabilities = capability(
+            CapabilityRequirement.Capability.EXTERNAL_URL_OPEN,
+            URI(url).let { CapabilityTarget.WebOrigin(it.scheme.lowercase(), it.host.lowercase()) },
+        )
     }
 
     data class CreateReminder(
@@ -38,7 +45,10 @@ sealed interface ActionIntent {
             require(dueAtEpochMillis > 0) { "reminder due time must be positive" }
         }
 
-        override val requiredCapabilities = capability(CapabilityRequirement.Capability.REMINDER_CREATE)
+        override val requiredCapabilities = capability(
+            CapabilityRequirement.Capability.REMINDER_CREATE,
+            CapabilityTarget.ReminderStore,
+        )
     }
 
     data class DraftMessage(
@@ -50,7 +60,10 @@ sealed interface ActionIntent {
             require(body.isNotBlank() && body.length <= MAX_TEXT_LENGTH) { "invalid message body" }
         }
 
-        override val requiredCapabilities = capability(CapabilityRequirement.Capability.MESSAGE_DRAFT)
+        override val requiredCapabilities = capability(
+            CapabilityRequirement.Capability.MESSAGE_DRAFT,
+            CapabilityTarget.RecipientReference(recipientReference),
+        )
     }
 
     private companion object {
@@ -59,6 +72,9 @@ sealed interface ActionIntent {
         val ALLOWED_URL_SCHEMES = setOf("http", "https")
         const val MAX_TEXT_LENGTH = 4_096
 
-        fun capability(value: CapabilityRequirement.Capability) = setOf(CapabilityRequirement(value))
+        fun capability(
+            value: CapabilityRequirement.Capability,
+            target: CapabilityTarget,
+        ) = setOf(CapabilityRequirement(value, target))
     }
 }
