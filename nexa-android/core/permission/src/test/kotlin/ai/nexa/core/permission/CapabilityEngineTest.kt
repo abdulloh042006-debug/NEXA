@@ -65,6 +65,16 @@ class CapabilityEngineTest {
     }
 
     @Test
+    fun `clock rollback and broad grant cannot bypass explicit each-time consent`() {
+        store.put(grant("future", issuedAt = now + 1))
+        assertDecision(app, AuthorizationStatus.DENY, AuthorizationReason.GRANT_NOT_YET_ACTIVE)
+
+        val reminder = reminder()
+        store.put(reminderGrant(scope = GrantScope.Session(context.sessionId!!)))
+        assertDecision(reminder, AuthorizationStatus.DENY, AuthorizationReason.SCOPE_MISMATCH)
+    }
+
+    @Test
     fun `Android permission never replaces a NEXA grant`() {
         runtimeState = RuntimePermissionState.GRANTED
         val reminder = reminder()
@@ -122,13 +132,14 @@ class CapabilityEngineTest {
         id: String,
         target: CapabilityTarget = app.target,
         scope: GrantScope = GrantScope.Once(context.authorizationRequestId),
+        issuedAt: Long = 1,
         expiresAt: Long = 1_000,
     ) = CapabilityGrant(
         GrantId(id),
         CapabilityRequirement.Capability.APP_LAUNCH,
         target,
         scope,
-        issuedAtEpochMillis = 1,
+        issuedAtEpochMillis = issuedAt,
         expiresAtEpochMillis = expiresAt,
         consent = ConsentProvenance(GrantSource.USER_CONSENT, 1),
     )
@@ -138,11 +149,13 @@ class CapabilityEngineTest {
         CapabilityTarget.ReminderStore,
     )
 
-    private fun reminderGrant() = CapabilityGrant(
+    private fun reminderGrant(
+        scope: GrantScope = GrantScope.Once(context.authorizationRequestId),
+    ) = CapabilityGrant(
         GrantId("reminder-grant"),
         CapabilityRequirement.Capability.REMINDER_CREATE,
         CapabilityTarget.ReminderStore,
-        GrantScope.Once(context.authorizationRequestId),
+        scope,
         issuedAtEpochMillis = 1,
         expiresAtEpochMillis = 1_000,
         consent = ConsentProvenance(GrantSource.USER_CONSENT, 1),

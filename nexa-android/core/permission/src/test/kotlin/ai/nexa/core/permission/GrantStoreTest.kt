@@ -18,6 +18,17 @@ class GrantStoreTest {
         assertEquals(50, store.grantsFor(CAPABILITY).first().revokedAtEpochMillis)
     }
 
+    @Test
+    fun `conflicting duplicate grant id keeps the first immutable grant`() {
+        val store = InMemoryGrantStore()
+        store.put(grant("same"))
+        store.put(
+            grant("same").copy(target = CapabilityTarget.Application("ai.other.app")),
+        )
+
+        assertEquals(CapabilityTarget.Application("ai.nexa.app"), store.grantsFor(CAPABILITY).single().target)
+    }
+
     private fun grant(id: String) = CapabilityGrant(
         GrantId(id),
         CAPABILITY,

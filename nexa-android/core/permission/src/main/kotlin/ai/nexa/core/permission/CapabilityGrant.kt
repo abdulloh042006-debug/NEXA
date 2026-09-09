@@ -63,6 +63,7 @@ data class CapabilityGrant(
     }
 
     fun isExpired(atEpochMillis: Long): Boolean = atEpochMillis >= expiresAtEpochMillis
+    fun isNotYetActive(atEpochMillis: Long): Boolean = atEpochMillis < issuedAtEpochMillis
     fun isRevoked(atEpochMillis: Long): Boolean = revokedAtEpochMillis?.let { it <= atEpochMillis } == true
 }
 

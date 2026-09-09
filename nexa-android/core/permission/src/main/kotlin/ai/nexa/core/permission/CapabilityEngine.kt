@@ -45,8 +45,10 @@ class CapabilityEngine(
     ): AuthorizationDecision {
         val capabilityGrants = grantStore.grantsFor(requirement.capability)
         val targeted = capabilityGrants.filter { it.target == requirement.target }
-        val scoped = targeted.filter { it.scope.matches(requirement.requestedScope, context) }
-        val active = scoped.filterNot { it.isRevoked(now) || it.isExpired(now) }
+        val scoped = targeted.filter {
+            it.scope.matches(requirement.requestedScope, requirement.metadata.consentMode, context)
+        }
+        val active = scoped.filterNot { it.isRevoked(now) || it.isExpired(now) || it.isNotYetActive(now) }
         return when {
             capabilityGrants.isEmpty() -> missingGrant(requirement, now)
             targeted.isEmpty() -> deny(requirement, AuthorizationReason.TARGET_MISMATCH, now)
@@ -56,8 +58,11 @@ class CapabilityEngine(
         }
     }
 
-    private fun inactiveReason(grants: List<CapabilityGrant>, now: Long): AuthorizationReason =
-        if (grants.any { it.isRevoked(now) }) AuthorizationReason.REVOKED_GRANT else AuthorizationReason.EXPIRED_GRANT
+    private fun inactiveReason(grants: List<CapabilityGrant>, now: Long): AuthorizationReason = when {
+        grants.any { it.isRevoked(now) } -> AuthorizationReason.REVOKED_GRANT
+        grants.any { it.isNotYetActive(now) } -> AuthorizationReason.GRANT_NOT_YET_ACTIVE
+        else -> AuthorizationReason.EXPIRED_GRANT
+    }
 
     private fun checkRuntimePrerequisite(
         requirement: CapabilityRequirement,
@@ -105,6 +110,15 @@ class CapabilityEngine(
         )
 
     private fun GrantScope.matches(
+        requested: RequestedGrantScope,
+        consentMode: ConsentMode,
+        context: AuthorizationContext,
+    ): Boolean = when {
+        consentMode == ConsentMode.EXPLICIT_EACH_TIME && this !is GrantScope.Once -> false
+        else -> matchesRequestedScope(requested, context)
+    }
+
+    private fun GrantScope.matchesRequestedScope(
         requested: RequestedGrantScope,
         context: AuthorizationContext,
     ): Boolean = when (this) {

@@ -12,7 +12,7 @@ class InMemoryGrantStore @Inject constructor() : GrantStore {
         grants.values.filter { it.capability == capability }.sortedBy { it.id }
 
     override fun put(grant: CapabilityGrant) {
-        grants[grant.id] = grant
+        grants.putIfAbsent(grant.id, grant)
     }
 
     override fun revoke(id: GrantId, revokedAtEpochMillis: Long): Boolean {
